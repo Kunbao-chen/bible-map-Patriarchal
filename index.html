@@ -3,111 +3,242 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>亞伯拉罕史地互動地圖</title>
+    <title>亞伯拉罕三代史地互動地圖</title>
     <style>
-        :root { --gold: #c5a059; --paper: #fdfaf1; }
-        body { font-family: "微軟正黑體", sans-serif; background: #e0e0e0; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        :root { --gold: #c5a059; --bg-color: #f5f5f5; --text-dark: #333; }
+        * { box-sizing: border-box; font-family: "微軟正黑體", sans-serif; }
+        body { margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; background: var(--bg-color); }
         
-        /* 上方地圖區 */
-        #map-container { 
-            position: relative; 
-            background: var(--paper);
-            flex: 0 0 60%; 
-            overflow: hidden;
-            display: flex;
-            justify-content: center;
-        }
-        #bgMap { height: 100%; width: auto; object-fit: contain; }
-        #markers-layer { position: absolute; top: 0; left: 50%; transform: translateX(-50%); height: 100%; width: auto; aspect-ratio: 9/16; }
+        /* 自適應排版 */
+        #app-container { display: flex; flex-direction: column; height: 100%; width: 100%; }
+        @media (min-aspect-ratio: 1/1) { #app-container { flex-direction: row; } } /* 橫向螢幕：左右分割 */
 
-        /* 地名標籤樣式 */
-        .marker {
-            position: absolute;
-            background: rgba(255,255,255,0.9);
-            border: 1px solid var(--gold);
-            padding: 1px 6px;
-            border-radius: 10px;
-            font-size: 13px;
-            font-weight: bold;
-            color: #5d4037;
-            transform: translate(-50%, -50%);
-            white-space: nowrap;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
+        /* 地圖區 */
+        #map-section { flex: 1.5; position: relative; overflow: hidden; background: #e0e0e0; display: flex; justify-content: center; align-items: center; }
+        #map-container { position: relative; height: 100%; width: auto; max-width: 100%; aspect-ratio: 9/16; } /* 預設圖片比例 */
+        #bg-map { height: 100%; width: 100%; object-fit: contain; transition: opacity 0.3s; }
+        #svg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
+        #marker-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
 
-        /* 下方表格區 */
-        #table-container { flex: 1; background: white; overflow-y: auto; border-top: 2px solid var(--gold); }
-        table { width: 100%; border-collapse: collapse; font-size: 14px; }
-        th { background: var(--gold); color: white; position: sticky; top: 0; padding: 10px; z-index: 10; }
-        td { padding: 8px; border-bottom: 1px solid #eee; text-align: left; }
-        tr:nth-child(even) { background: #fafafa; }
+        /* 標籤樣式 */
+        .marker { position: absolute; transform: translate(-50%, -50%); padding: 2px 6px; border-radius: 4px; font-size: 12px; font-weight: bold; background: rgba(255,255,255,0.85); border: 1px solid #999; color: #555; transition: all 0.3s; white-space: nowrap; }
+        .marker.active { background: var(--gold); color: white; border: 2px solid #fff; box-shadow: 0 0 10px rgba(0,0,0,0.5); font-size: 14px; z-index: 100; }
+        .marker-area { position: absolute; transform: translate(-50%, -50%); border-radius: 50%; background: rgba(197, 160, 89, 0.3); border: 1px dashed var(--gold); display: flex; justify-content: center; align-items: center; color: #666; font-weight: bold; font-size: 12px; }
+        .geofeature { position: absolute; transform: translate(-50%, -50%); font-size: 12px; color: #2c3e50; font-style: italic; opacity: 0.7; }
+        .geofeature.sea { color: #2980b9; }
+
+        /* 表格區 */
+        #table-section { flex: 1; background: white; overflow-y: auto; border-top: 3px solid var(--gold); }
+        @media (min-aspect-ratio: 1/1) { #table-section { border-top: none; border-left: 3px solid var(--gold); } }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: var(--gold); color: white; position: sticky; top: 0; padding: 10px; text-align: left; }
+        td { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; transition: background 0.2s; }
+        tr:hover td { background: #fdfaf1; }
+        tr.selected td { background: #fbeeb8; font-weight: bold; }
+
+        /* 資訊框 */
+        #info-box { position: absolute; bottom: 20px; right: 20px; width: 300px; max-width: 90vw; background: white; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); border: 2px solid var(--gold); padding: 15px; z-index: 1000; transition: all 0.3s ease; display: none; }
+        #info-box h3 { margin: 0 0 10px 0; color: var(--gold); font-size: 16px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        #info-box p { margin: 5px 0; font-size: 13px; color: var(--text-dark); line-height: 1.4; }
+        .info-btn { background: #eee; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; float: right; margin-left: 5px; }
+        
+        /* 縮小後的還原按鈕 */
+        #restore-btn { position: absolute; bottom: 20px; right: 20px; width: 50px; height: 50px; background: var(--gold); color: white; border-radius: 50%; display: none; justify-content: center; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.3); cursor: pointer; z-index: 1001; font-weight: bold; border: 2px solid white; transition: transform 0.2s; }
+        #restore-btn:active { transform: scale(0.9); }
     </style>
 </head>
 <body>
 
-<div id="map-container">
-    <img src="Abraham_2.png" id="bgMap">
-    <div id="markers-layer"></div>
-</div>
+<div id="app-container">
+    <div id="map-section">
+        <div id="map-container">
+            <img src="Abraham_2.jpg" id="bg-map" alt="地圖">
+            <svg id="svg-layer"></svg>
+            <div id="marker-layer"></div>
+        </div>
+        
+        <div id="info-box">
+            <button class="info-btn" onclick="toggleInfoBox(false)">縮小 ↘</button>
+            <h3 id="info-title">事件標題</h3>
+            <p><strong>地點：</strong> <span id="info-loc"></span></p>
+            <p><strong>時間：</strong> <span id="info-time"></span></p>
+            <p><strong>經文：</strong> <span id="info-scripture"></span></p>
+            <p><strong>備註：</strong> <span id="info-note"></span></p>
+        </div>
+        <div id="restore-btn" onclick="toggleInfoBox(true)">資訊</div>
+    </div>
 
-<div id="table-container">
-    <table id="dataTable">
-        <thead id="tableHead"></thead>
-        <tbody id="tableBody"></tbody>
-    </table>
+    <div id="table-section">
+        <table id="data-table">
+            <thead><tr><th width="50">序號</th><th>關鍵事件內容</th></tr></thead>
+            <tbody id="table-body"></tbody>
+        </table>
+    </div>
 </div>
 
 <script>
+    let eventData = [], coordsData = {}, geoData = [];
+    let currentMapType = 'small'; // 'small' or 'large'
+    
+    // 簡易 CSV 解析器 (處理引號內的逗號)
+    function parseCSV(text) {
+        const rows = [];
+        let currentRow = [], currentCell = '', inQuotes = false;
+        for (let i = 0; i < text.length; i++) {
+            const c = text[i], next = text[i+1];
+            if (c === '"' && inQuotes && next === '"') { currentCell += '"'; i++; }
+            else if (c === '"') { inQuotes = !inQuotes; }
+            else if (c === ',' && !inQuotes) { currentRow.push(currentCell.trim()); currentCell = ''; }
+            else if (c === '\n' && !inQuotes) { currentRow.push(currentCell.trim()); rows.push(currentRow); currentRow = []; currentCell = ''; }
+            else if (c !== '\r') { currentCell += c; }
+        }
+        if (currentCell || currentRow.length > 0) { currentRow.push(currentCell.trim()); rows.push(currentRow); }
+        return rows;
+    }
+
     async function init() {
         try {
-            // 同時抓取兩份檔案
-            const [dataRes, coordRes] = await Promise.all([
-                fetch('data.csv'),
-                fetch('coords.csv')
+            const [dataRes, coordRes, geoRes] = await Promise.all([
+                fetch('data.csv'), fetch('coords.csv'), fetch('geofeatures.csv')
             ]);
-
-            const dataText = await dataRes.text();
-            const coordText = await coordRes.text();
-
-            // 1. 處理座標表
-            const coordMap = {};
-            coordText.split('\n').slice(1).forEach(line => {
-                const parts = line.split(',');
-                if (parts.length >= 3) {
-                    const name = parts[0].trim();
-                    coordMap[name] = { x: parts[1].trim(), y: parts[2].trim() };
-                }
+            
+            // 處理座標表
+            const coordRows = parseCSV(await coordRes.text()).slice(1);
+            coordRows.forEach(row => {
+                if (row.length < 5) return;
+                coordsData[row[0]] = {
+                    x_s: row[1], y_s: row[2], x_l: row[3], y_l: row[4],
+                    type: row[5] || 'Point', radius: row[6] || 5
+                };
             });
 
-            // 2. 處理主資料表
-            const rows = dataText.split('\n').filter(r => r.trim() !== '').map(r => r.split(','));
-            const tableHead = document.getElementById('tableHead');
-            const tableBody = document.getElementById('tableBody');
+            // 處理地貌表
+            const geoRows = parseCSV(await geoRes.text()).slice(1);
+            geoRows.forEach(row => {
+                if (row.length >= 6) geoData.push({ name: row[0], type: row[1], x_s: row[2], y_s: row[3], x_l: row[4], y_l: row[5] });
+            });
 
-            rows.forEach((row, i) => {
+            // 處理主表
+            const dataRows = parseCSV(await dataRes.text()).slice(1);
+            const tbody = document.getElementById('table-body');
+            
+            dataRows.forEach((row, index) => {
+                if(row.length < 5 || !row[0]) return;
+                const item = { id: row[0], time: row[1], event: row[2], location: row[3], scripture: row[4], note: row[5] || '' };
+                eventData.push(item);
+                
                 const tr = document.createElement('tr');
-                row.forEach(cell => {
-                    const el = document.createElement(i === 0 ? 'th' : 'td');
-                    el.textContent = cell;
-                    tr.appendChild(el);
-                });
-                if (i === 0) tableHead.appendChild(tr); else tableBody.appendChild(tr);
+                tr.innerHTML = `<td>${item.id}</td><td>${item.event}</td>`;
+                tr.onclick = () => selectEvent(index, tr);
+                tbody.appendChild(tr);
             });
 
-            // 3. 繪製標籤
-            const markerLayer = document.getElementById('markers-layer');
-            for (const name in coordMap) {
+            // 初始渲染地貌 (預設小圖)
+            renderMap('small');
+        } catch (e) { console.error("資料載入失敗", e); }
+    }
+
+    function selectEvent(index, trElement) {
+        // 更新表格 UI
+        document.querySelectorAll('#table-body tr').forEach(tr => tr.classList.remove('selected'));
+        if(trElement) trElement.classList.add('selected');
+
+        const item = eventData[index];
+        const locStr = item.location;
+        
+        // 判斷起終點
+        let places = locStr.split('→').map(s => s.replace(/\(.*?\)/g, '').trim()); // 移除距離文字
+
+        // 決定使用大圖或小圖
+        let needsLargeMap = false;
+        places.forEach(p => {
+            if (coordsData[p] && (!coordsData[p].x_s || coordsData[p].x_s === '')) needsLargeMap = true;
+        });
+        
+        const targetMap = needsLargeMap ? 'large' : 'small';
+        if (currentMapType !== targetMap) {
+            currentMapType = targetMap;
+            document.getElementById('bg-map').src = targetMap === 'large' ? 'Abraham_1.jpg' : 'Abraham_2.jpg';
+        }
+
+        renderMap(currentMapType, places);
+        showInfoBox(item);
+    }
+
+    function renderMap(mapType, activePlaces = []) {
+        const markerLayer = document.getElementById('marker-layer');
+        const svgLayer = document.getElementById('svg-layer');
+        markerLayer.innerHTML = ''; 
+        svgLayer.innerHTML = '';
+        
+        const xKey = mapType === 'large' ? 'x_l' : 'x_s';
+        const yKey = mapType === 'large' ? 'y_l' : 'y_s';
+
+        // 1. 畫地貌 (背景層)
+        geoData.forEach(geo => {
+            if (geo[xKey] && geo[yKey]) {
                 const div = document.createElement('div');
-                div.className = 'marker';
-                div.style.left = coordMap[name].x + '%';
-                div.style.top = coordMap[name].y + '%';
-                div.textContent = name;
+                div.className = `geofeature ${geo.type.toLowerCase()}`;
+                div.style.left = geo[xKey] + '%';
+                div.style.top = geo[yKey] + '%';
+                div.textContent = geo.name;
                 markerLayer.appendChild(div);
             }
-        } catch (err) {
-            console.error("載入失敗:", err);
+        });
+
+        // 2. 畫路徑 (如果有起終點)
+        if (activePlaces.length === 2) {
+            const p1 = coordsData[activePlaces[0]];
+            const p2 = coordsData[activePlaces[1]];
+            if (p1 && p2 && p1[xKey] && p2[xKey]) {
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', p1[xKey] + '%'); line.setAttribute('y1', p1[yKey] + '%');
+                line.setAttribute('x2', p2[xKey] + '%'); line.setAttribute('y2', p2[yKey] + '%');
+                line.setAttribute('stroke', 'var(--gold)'); line.setAttribute('stroke-width', '2');
+                line.setAttribute('stroke-dasharray', '5,5');
+                svgLayer.appendChild(line);
+            }
+        }
+
+        // 3. 畫所有地點
+        for (const name in coordsData) {
+            const loc = coordsData[name];
+            if (!loc[xKey] || !loc[yKey]) continue; // 該圖無此座標
+
+            const isActive = activePlaces.includes(name);
+            const div = document.createElement('div');
+            
+            if (loc.type === 'Area') {
+                div.className = 'marker-area';
+                div.style.width = loc.radius + '%';
+                div.style.height = loc.radius + '%'; // 簡易比例
+            } else {
+                div.className = 'marker';
+            }
+
+            if (isActive) div.classList.add('active');
+            
+            div.style.left = loc[xKey] + '%';
+            div.style.top = loc[yKey] + '%';
+            div.textContent = name;
+            markerLayer.appendChild(div);
         }
     }
+
+    function showInfoBox(item) {
+        document.getElementById('info-title').textContent = `${item.id}. ${item.event}`;
+        document.getElementById('info-loc').textContent = item.location;
+        document.getElementById('info-time').textContent = item.time;
+        document.getElementById('info-scripture').textContent = item.scripture;
+        document.getElementById('info-note').textContent = item.note;
+        toggleInfoBox(true);
+    }
+
+    function toggleInfoBox(show) {
+        document.getElementById('info-box').style.display = show ? 'block' : 'none';
+        document.getElementById('restore-btn').style.display = show ? 'none' : 'flex';
+    }
+
     window.onload = init;
 </script>
 </body>
