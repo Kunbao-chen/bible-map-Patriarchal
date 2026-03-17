@@ -11,11 +11,11 @@
         
         /* 自適應排版 */
         #app-container { display: flex; flex-direction: column; height: 100%; width: 100%; }
-        @media (min-aspect-ratio: 1/1) { #app-container { flex-direction: row; } } /* 橫向螢幕：左右分割 */
+        @media (min-aspect-ratio: 1/1) { #app-container { flex-direction: row; } }
 
         /* 地圖區 */
         #map-section { flex: 1.5; position: relative; overflow: hidden; background: #e0e0e0; display: flex; justify-content: center; align-items: center; }
-        #map-container { position: relative; height: 100%; width: auto; max-width: 100%; aspect-ratio: 9/16; } /* 預設圖片比例 */
+        #map-container { position: relative; height: 100%; width: auto; max-width: 100%; aspect-ratio: 9/16; } 
         #bg-map { height: 100%; width: 100%; object-fit: contain; transition: opacity 0.3s; }
         #svg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
         #marker-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
@@ -52,7 +52,7 @@
 <div id="app-container">
     <div id="map-section">
         <div id="map-container">
-            <img src="Abraham_2.jpg" id="bg-map" alt="地圖">
+            <img src="Abraham_2.png" id="bg-map" alt="地圖">
             <svg id="svg-layer"></svg>
             <div id="marker-layer"></div>
         </div>
@@ -78,9 +78,9 @@
 
 <script>
     let eventData = [], coordsData = {}, geoData = [];
-    let currentMapType = 'small'; // 'small' or 'large'
+    let currentMapType = 'small';
     
-    // 簡易 CSV 解析器 (處理引號內的逗號)
+    // CSV 解析器
     function parseCSV(text) {
         const rows = [];
         let currentRow = [], currentCell = '', inQuotes = false;
@@ -98,6 +98,7 @@
 
     async function init() {
         try {
+            // 讀取檔案
             const [dataRes, coordRes, geoRes] = await Promise.all([
                 fetch('data.csv'), fetch('coords.csv'), fetch('geofeatures.csv')
             ]);
@@ -139,17 +140,14 @@
     }
 
     function selectEvent(index, trElement) {
-        // 更新表格 UI
         document.querySelectorAll('#table-body tr').forEach(tr => tr.classList.remove('selected'));
         if(trElement) trElement.classList.add('selected');
 
         const item = eventData[index];
         const locStr = item.location;
         
-        // 判斷起終點
-        let places = locStr.split('→').map(s => s.replace(/\(.*?\)/g, '').trim()); // 移除距離文字
+        let places = locStr.split('→').map(s => s.replace(/\(.*?\)/g, '').trim());
 
-        // 決定使用大圖或小圖
         let needsLargeMap = false;
         places.forEach(p => {
             if (coordsData[p] && (!coordsData[p].x_s || coordsData[p].x_s === '')) needsLargeMap = true;
@@ -158,7 +156,8 @@
         const targetMap = needsLargeMap ? 'large' : 'small';
         if (currentMapType !== targetMap) {
             currentMapType = targetMap;
-            document.getElementById('bg-map').src = targetMap === 'large' ? 'Abraham_1.jpg' : 'Abraham_2.jpg';
+            // 這裡也修正為動態載入 .png
+            document.getElementById('bg-map').src = targetMap === 'large' ? 'Abraham_1.png' : 'Abraham_2.png';
         }
 
         renderMap(currentMapType, places);
@@ -174,7 +173,7 @@
         const xKey = mapType === 'large' ? 'x_l' : 'x_s';
         const yKey = mapType === 'large' ? 'y_l' : 'y_s';
 
-        // 1. 畫地貌 (背景層)
+        // 畫地貌
         geoData.forEach(geo => {
             if (geo[xKey] && geo[yKey]) {
                 const div = document.createElement('div');
@@ -186,7 +185,7 @@
             }
         });
 
-        // 2. 畫路徑 (如果有起終點)
+        // 畫路徑
         if (activePlaces.length === 2) {
             const p1 = coordsData[activePlaces[0]];
             const p2 = coordsData[activePlaces[1]];
@@ -200,10 +199,10 @@
             }
         }
 
-        // 3. 畫所有地點
+        // 畫地點
         for (const name in coordsData) {
             const loc = coordsData[name];
-            if (!loc[xKey] || !loc[yKey]) continue; // 該圖無此座標
+            if (!loc[xKey] || !loc[yKey]) continue; 
 
             const isActive = activePlaces.includes(name);
             const div = document.createElement('div');
@@ -211,7 +210,7 @@
             if (loc.type === 'Area') {
                 div.className = 'marker-area';
                 div.style.width = loc.radius + '%';
-                div.style.height = loc.radius + '%'; // 簡易比例
+                div.style.height = loc.radius + '%'; 
             } else {
                 div.className = 'marker';
             }
