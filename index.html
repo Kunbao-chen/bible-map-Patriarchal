@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>亞伯拉罕史地互動地圖 V3.1</title>
+    <title>亞伯拉罕史地互動地圖 V3.2 (精準定位版)</title>
     <!-- 引入平移縮放套件 -->
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -29,7 +29,7 @@
         .marker { position: absolute; transform: translate(-50%, -50%); padding: 4px 8px; border-radius: 20px; font-size: 12px; font-weight: bold; background: rgba(255,255,255,0.85); border: 1px solid #999; color: #444; white-space: nowrap; transition: all 0.2s; pointer-events: auto; cursor: pointer; z-index: 11; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
         .marker:hover { background: #fff; border-color: var(--gold); transform: translate(-50%, -50%) scale(1.1); z-index: 100; opacity: 1 !important; box-shadow: 0 3px 8px rgba(0,0,0,0.3); }
         .marker.active { background: var(--gold); color: white; border: 2px solid white; font-size: 14px; z-index: 100; opacity: 1 !important; box-shadow: 0 0 15px rgba(0,0,0,0.5); transform: translate(-50%, -50%) scale(1.1); }
-        .marker.low-priority { opacity: 0.8; font-size: 10px; z-index: 10; font-weight: normal; background: rgba(255,255,255,0.7); } /* 常態顯示的次要點 */
+        .marker.low-priority { opacity: 0.8; font-size: 10px; z-index: 10; font-weight: normal; background: rgba(255,255,255,0.7); }
 
         /* 隱藏標籤，只顯示點 */
         .marker-dot-only { padding: 0; width: 8px; height: 8px; border-radius: 50%; background: #666; border: 1px solid white; color: transparent; overflow: hidden; opacity: 0.6; }
@@ -88,7 +88,7 @@
 <div id="app-container">
     <div id="map-section">
         <div id="panzoom-element">
-            <img src="Abraham_2.png" id="bg-map" alt="Base Map" onerror="this.src='Abraham_2.jpg'"> <!-- Fallback to jpg -->
+            <img src="Abraham_2.png" id="bg-map" alt="Base Map" onerror="this.src='Abraham_2.jpg'">
             <svg id="svg-layer"></svg>
             <div id="geofeatures-layer"></div>
             <div id="marker-layer"></div>
@@ -133,7 +133,7 @@
     let eventData = [], coordsData = {}, geoData = [];
     let currentMap = 'small';
     let labelCollisionModel = {};
-    let currentActivePlaces = []; // Keep track for reset
+    let currentActivePlaces = []; 
 
     // 初始化 Panzoom
     const elem = document.getElementById('panzoom-element');
@@ -147,9 +147,8 @@
     // 解決滾輪縮放與表格滾動的衝突
     const mapSection = document.getElementById('map-section');
     mapSection.addEventListener('wheel', (e) => {
-        // Only zoom if we are interacting with the map section
         pz.zoomWithWheel(e);
-        e.preventDefault(); // Prevent page scrolling
+        e.preventDefault(); 
     }, { passive: false });
 
     // 資訊框拖曳防冒泡
@@ -158,7 +157,7 @@
         infoBox.addEventListener(evt, (e) => e.stopPropagation());
     });
 
-    // 資訊框拖曳邏輯 (改進版，確保不超出視窗)
+    // 資訊框拖曳邏輯 (邊界限制)
     let isDragging = false, dragStartX, dragStartY, initialLeft, initialTop;
     const header = document.getElementById("info-header");
     
@@ -177,7 +176,6 @@
         let newLeft = initialLeft + e.clientX - dragStartX;
         let newTop = initialTop + e.clientY - dragStartY;
         
-        // 邊界檢查
         const maxLeft = window.innerWidth - infoBox.offsetWidth;
         const maxTop = window.innerHeight - infoBox.offsetHeight;
         
@@ -207,11 +205,10 @@
         "亞倫巴古": "伯特利下邊",
         "迦累得": "基列山",
         "埃及安城": "埃及安城",
-        "所多瑪": "西訂谷", // Fallback if Sodom point is missing but Valley is there
+        "所多瑪": "西訂谷", 
         "蛾摩拉": "西訂谷"
     };
 
-    // CSV 解析 (支援引號處理)
     function parseCSV(text) {
         const rows = [];
         let currentRow = [], currentCell = '', inQuotes = false;
@@ -228,7 +225,6 @@
         return rows;
     }
 
-    // 載入與解析資料
     async function loadData() {
         try {
             const [dataRes, coordsRes, geoRes] = await Promise.all([
@@ -262,15 +258,11 @@
                     tr.onclick = () => selectEvent(i, tr);
                     tbody.appendChild(tr);
                 });
-            } else {
-                console.error("無法載入 data.csv，請確認檔案位置與編碼。");
             }
 
-            // 初始化視圖
             renderGeofeatures('small');
             renderMarkerLayer('small', []);
             
-            // 確保圖片載入後重置視角
             document.getElementById('bg-map').onload = () => {
                 pz.reset();
             };
@@ -280,7 +272,6 @@
         }
     }
 
-    // 事件選擇與地圖連動
     function selectEvent(idx, trElement) {
         document.querySelectorAll('tr').forEach(r => r.classList.remove('selected'));
         if(trElement) trElement.classList.add('selected');
@@ -305,7 +296,6 @@
 
             if (coordsData[coreName]) {
                 activePlaces.push({ ...coordsData[coreName], name: coreName, originalName: p });
-                // 強制切換大圖邏輯：如果小圖沒有座標 (空白)，但大圖有
                 if ((!coordsData[coreName].xs || coordsData[coreName].xs.trim() === "") && coordsData[coreName].xl) {
                     needLargeMap = true;
                 }
@@ -315,12 +305,9 @@
         currentActivePlaces = activePlaces;
         const targetMap = needLargeMap ? 'large' : 'small';
         
-        // 判斷是否需要切換底圖
         if (currentMap !== targetMap) {
             currentMap = targetMap;
             const imgEl = document.getElementById('bg-map');
-            
-            // 處理副檔名 (嘗試 png，失敗換 jpg)
             const fallbackExt = targetMap === 'large' ? 'Abraham_1.jpg' : 'Abraham_2.jpg';
             imgEl.onerror = function() { this.src = fallbackExt; this.onerror = null; };
             imgEl.src = targetMap === 'large' ? 'Abraham_1.png' : 'Abraham_2.png';
@@ -328,17 +315,16 @@
             imgEl.onload = () => {
                 renderGeofeatures(targetMap);
                 renderMarkerLayer(targetMap, activePlaces);
-                flyTo(activePlaces, targetMap, true); // 切換地圖，重置縮放
+                flyTo(activePlaces, targetMap); 
             };
         } else {
             renderMarkerLayer(targetMap, activePlaces);
-            flyTo(activePlaces, targetMap, false); // 不切換地圖，保持當前縮放
+            flyTo(activePlaces, targetMap); 
         }
 
         updateInfoBox(item, placesNames, activePlaces);
     }
 
-    // 渲染山川地貌 (背景層)
     function renderGeofeatures(type) {
         const layer = document.getElementById('geofeatures-layer');
         layer.innerHTML = '';
@@ -357,7 +343,6 @@
         });
     }
 
-    // 渲染標記與碰撞偵測
     function renderMarkerLayer(type, actives) {
         const markerLayer = document.getElementById('marker-layer');
         const svgLayer = document.getElementById('svg-layer');
@@ -369,19 +354,16 @@
         const Y = type === 'large' ? 'yl' : 'ys';
         const activeNames = actives.map(a => a.name);
 
-        // 1. 畫路線
         if (actives.length >= 2) {
             for(let i=0; i<actives.length-1; i++) {
                 const p1 = actives[i], p2 = actives[i+1];
                 if (p1[X] && p2[X]) {
-                    // 底色白線增加對比
                     const bgLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
                     bgLine.setAttribute('x1', p1[X]+'%'); bgLine.setAttribute('y1', p1[Y]+'%');
                     bgLine.setAttribute('x2', p2[X]+'%'); bgLine.setAttribute('y2', p2[Y]+'%');
                     bgLine.setAttribute('stroke', 'rgba(255,255,255,0.6)'); bgLine.setAttribute('stroke-width', '5');
                     svgLayer.appendChild(bgLine);
 
-                    // 主線
                     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
                     line.setAttribute('x1', p1[X]+'%'); line.setAttribute('y1', p1[Y]+'%');
                     line.setAttribute('x2', p2[X]+'%'); line.setAttribute('y2', p2[Y]+'%');
@@ -394,7 +376,6 @@
         }
 
         const allPlaces = Object.keys(coordsData);
-        // 排序：Area 先畫(底層)，Active 點最後畫(頂層)
         allPlaces.sort((a,b) => {
             const isAreaA = coordsData[a].type === 'Area';
             const isAreaB = coordsData[b].type === 'Area';
@@ -408,7 +389,6 @@
             return 0;
         });
 
-        // 2. 畫標記
         allPlaces.forEach(name => {
             const loc = coordsData[name];
             if (!loc[X] || !loc[Y] || loc[X] === "") return;
@@ -430,10 +410,9 @@
                 div.style.left = loc[X] + '%';
                 div.style.top = loc[Y] + '%';
 
-                // 點擊地點也可以置中
                 div.onclick = (e) => {
                     e.stopPropagation();
-                    flyTo([{...loc, name: name}], currentMap, false);
+                    flyTo([{...loc, name: name}], currentMap);
                 };
 
                 markerLayer.appendChild(div);
@@ -442,15 +421,13 @@
                     div.className = 'marker active';
                     registerCollision(getRect(div, loc[X], loc[Y]), name);
                 } else {
-                    // 檢查碰撞
                     div.className = 'marker low-priority';
                     const rect = getRect(div, loc[X], loc[Y]);
                     
                     if (checkCollision(rect)) {
-                        // 發生碰撞，改為只顯示小黑點
                         div.className = 'marker marker-dot-only';
-                        div.textContent = ''; // 清除文字
-                        div.title = name; // 滑鼠懸浮顯示提示
+                        div.textContent = ''; 
+                        div.title = name; 
                     } else {
                         registerCollision(rect, name);
                     }
@@ -459,12 +436,10 @@
         });
     }
 
-    // 模擬取得元素的範圍 (因為 transform translate 的關係，getBoundingClientRect 會不準確)
     function getRect(el, xPct, yPct) {
         const mapEl = document.getElementById('panzoom-element');
         const xPx = (xPct / 100) * mapEl.offsetWidth;
         const yPx = (yPct / 100) * mapEl.offsetHeight;
-        // 估算字串寬度 (12px 字體)
         const widthEstimate = el.textContent.length * 12 + 16; 
         const heightEstimate = 24;
         
@@ -494,16 +469,16 @@
         labelCollisionModel[name] = rect;
     }
 
-    // 平移與縮放邏輯 (改善版)
-    function flyTo(activePlaces, type, resetZoom) {
+    // ==== 核心修復：精準置中邏輯 ====
+    function flyTo(activePlaces, type) {
         if (activePlaces.length === 0) return;
         
         const X = type === 'large' ? 'xl' : 'xs';
         const Y = type === 'large' ? 'yl' : 'ys';
-        const mapContainer = document.getElementById('map-section');
+        const mapSection = document.getElementById('map-section');
         const imgElement = document.getElementById('bg-map');
 
-        // 計算所有 activePlaces 的中心點 (如果有兩個點以上，取中點)
+        // 1. 找出圖片座標的平均值 (Target Percentage)
         let sumX = 0, sumY = 0, validPoints = 0;
         activePlaces.forEach(p => {
             if (p[X]) { sumX += parseFloat(p[X]); sumY += parseFloat(p[Y]); validPoints++; }
@@ -514,30 +489,30 @@
         const targetXPct = sumX / validPoints;
         const targetYPct = sumY / validPoints;
 
+        // 2. 轉換為圖片上的實際像素座標
         const xPx = (targetXPct / 100) * imgElement.offsetWidth;
         const yPx = (targetYPct / 100) * imgElement.offsetHeight;
 
-        // 如果只有一個點，或者需要重置，給予一個適當的縮放值
-        let targetScale = pz.getScale();
-        if (resetZoom) {
-            targetScale = type === 'large' ? 1.5 : 2.5; 
-        }
+        // 3. 取得視窗中心點 (顯示區域的 50%, 50%)
+        const viewportCenterX = mapSection.offsetWidth / 2;
+        const viewportCenterY = mapSection.offsetHeight / 2;
 
-        // Panzoom 的平移是基於 origin (0,0) 的 offset
-        const panX = mapContainer.offsetWidth / 2 - (xPx * targetScale);
-        const panY = mapContainer.offsetHeight / 2 - (yPx * targetScale);
+        // 4. 計算平移量 (Pan)
+        // Panzoom 的 pan 是設定元素左上角 (transform-origin: 0 0) 的位移
+        // 公式: 視窗中心點 - (目標像素座標 * 當前縮放比例)
+        const currentScale = pz.getScale();
+        const panX = viewportCenterX - (xPx * currentScale);
+        const panY = viewportCenterY - (yPx * currentScale);
 
-        pz.zoom(targetScale, { animate: true });
-        setTimeout(() => {
-            pz.pan(panX, panY, { animate: true });
-        }, 50); 
+        // 執行平移
+        pz.pan(panX, panY, { animate: true });
     }
 
     function resetMapAndFly() {
         pz.reset();
         setTimeout(() => {
             if (currentActivePlaces.length > 0) {
-                flyTo(currentActivePlaces, currentMap, false);
+                flyTo(currentActivePlaces, currentMap);
             }
         }, 100);
     }
@@ -562,7 +537,7 @@
             const matchedActive = activePlaces.find(ap => ap.originalName === p || ap.name === p);
             
             if (matchedActive) {
-                span.onclick = () => flyTo([matchedActive], currentMap, false);
+                span.onclick = () => flyTo([matchedActive], currentMap);
                 span.title = "點擊以置中地圖";
             } else {
                 span.classList.add('disabled');
