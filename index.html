@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>亞伯拉罕史地互動地圖 V4.6 (修正版)</title>
+    <title>亞伯拉罕史地互動地圖 V4.7</title>
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
         :root { --gold: #c5a059; --bg-dark: #2c3e50; --text-light: #ecf0f1; }
@@ -30,17 +30,18 @@
         @media (min-aspect-ratio: 1/1) { #table-section { border-top: none; border-left: 5px solid var(--gold); } }
         table { width: 100%; border-collapse: collapse; }
         th { background: var(--bg-dark); color: white; position: sticky; top: 0; padding: 12px; text-align: left; z-index: 20; }
-        td { padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; }
+        td { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 14px; }
         tr.selected td { background: #fff9c4; font-weight: bold; border-left: 5px solid var(--gold); }
 
         /* 資訊框 */
-        #info-box { position: fixed; top: 20px; right: 20px; width: 300px; background: white; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); border-top: 6px solid var(--gold); z-index: 999; display: none; flex-direction: column; }
+        #info-box { position: fixed; top: 20px; right: 20px; width: 320px; background: white; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); border-top: 6px solid var(--gold); z-index: 999; display: none; flex-direction: column; }
         #info-header { padding: 10px; background: #f4f4f4; display: flex; justify-content: space-between; align-items: center; border-radius: 8px 8px 0 0; }
-        #info-body { padding: 15px; max-height: 60vh; overflow-y: auto; }
+        #info-body { padding: 15px; max-height: 70vh; overflow-y: auto; }
         .dist-badge { background: #e74c3c; color: white; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; display: inline-block; margin-bottom: 10px; }
+        .time-info { font-size: 13px; color: #7f8c8d; margin-bottom: 8px; display: block; border-left: 3px solid #ddd; padding-left: 8px; }
 
         .controls-map { position: absolute; bottom: 20px; left: 20px; z-index: 100; display: flex; flex-direction: column; gap: 8px; }
-        .controls-map button { width: 45px; height: 45px; border-radius: 8px; border: 1px solid #ccc; background: white; cursor: pointer; font-size: 20px; }
+        .controls-map button { width: 45px; height: 45px; border-radius: 8px; border: 1px solid #ccc; background: white; cursor: pointer; font-size: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
     </style>
 </head>
 <body>
@@ -62,7 +63,7 @@
     </div>
     <div id="table-section">
         <table id="main-table">
-            <thead><tr><th width="50">#</th><th>事件</th></tr></thead>
+            <thead><tr><th width="40">#</th><th>關鍵事件</th></tr></thead>
             <tbody id="table-body"></tbody>
         </table>
     </div>
@@ -74,11 +75,12 @@
         <button onclick="closeInfoBox()" style="border:none; background:none; cursor:pointer; font-size:18px;">✕</button>
     </div>
     <div id="info-body">
-        <h3 id="info-title" style="margin:0 0 10px 0; color:var(--gold);"></h3>
+        <span id="info-time" class="time-info"></span>
+        <h3 id="info-title" style="margin:0 0 10px 0; color:var(--gold); line-height:1.4;"></h3>
         <div id="info-dist-area"></div>
         <p id="info-loc-tags"></p>
         <p><strong>經文：</strong><span id="info-scripture" style="color:#2980b9;"></span></p>
-        <p id="info-note" style="font-size:13px; color:#666; line-height:1.5;"></p>
+        <p id="info-note" style="font-size:13px; color:#444; line-height:1.6; background: #f9f9f9; padding: 10px; border-radius: 4px;"></p>
     </div>
 </div>
 
@@ -91,54 +93,64 @@
     const overlay = document.getElementById('overlay-container');
     const elem = document.getElementById('panzoom-element');
 
-    // 初始化 Panzoom
     pz = Panzoom(elem, { maxScale: 5, minScale: 0.1, contain: 'outside' });
     document.getElementById('map-section').addEventListener('wheel', pz.zoomWithWheel);
 
     async function loadData() {
         try {
+            // 修正點 1：加上時間戳記避免快取 (?t=...)
+            const t = Date.now();
             const [sRes, lRes, dRes] = await Promise.all([
-                fetch('小圖座標.csv'), 
-                fetch('大圖座標.csv'), 
-                fetch('data.csv')
+                fetch(`小圖座標.csv?t=${t}`), 
+                fetch(`大圖座標.csv?t=${t}`), 
+                fetch(`data.csv?t=${t}`)
             ]);
             
             const [sText, lText, dText] = await Promise.all([sRes.text(), lRes.text(), dRes.text()]);
 
-            // 解析座標 - 修正索引：r[5] 是百分比X, r[6] 是百分比Y
             parseCSV(sText).slice(1).forEach(r => {
-                if(r[1]) coordsSmall[r[1].trim()] = { x: r[5], y: r[6], type: r[3]||'Point' };
+                if(r[1]) coordsSmall[r[1].trim()] = { x: r[5], y: r[6] };
             });
 
             parseCSV(lText).slice(1).forEach(r => {
-                if(r[1]) coordsLarge[r[1].trim()] = { x: r[5], y: r[6], type: r[3]||'Point' };
+                if(r[1]) coordsLarge[r[1].trim()] = { x: r[5], y: r[6] };
             });
 
-            // 解析事件資料
             const tbody = document.getElementById('table-body');
-            parseCSV(dText).slice(1).forEach((r, i) => {
-                if(!r[0]) return;
-                // 地點在 index 3
+            tbody.innerHTML = ''; 
+            eventData = []; // 清空舊資料
+
+            // 修正點 2：更寬鬆的解析判斷，確保 88 個事件都進來
+            parseCSV(dText).slice(1).forEach((r) => {
+                if(r.length < 3) return; // 只要這列有基本資料就讀取
+                
                 const locRaw = r[3] || "";
                 const locs = locRaw.split('→').map(p => p.replace(/\(.*?\)/g, '').trim());
                 locs.forEach(p => { if(p) freqMap[p] = (freqMap[p] || 0) + 1; });
                 
-                eventData.push({ id: r[0], event: r[2], loc: locRaw, script: r[4], note: r[5] });
+                const item = { 
+                    id: r[0], 
+                    time: r[1], 
+                    event: r[2], 
+                    loc: locRaw, 
+                    script: r[4], 
+                    note: r[5] 
+                };
+                eventData.push(item);
                 
+                // 修正點 3：閉包問題，鎖定目前的索引值
+                const currentIdx = eventData.length - 1;
                 const tr = document.createElement('tr');
-                tr.innerHTML = `<td>${r[0]}</td><td>${r[2]}</td>`;
-                tr.onclick = () => selectEvent(eventData.length - 1, tr);
+                tr.innerHTML = `<td>${item.id || ''}</td><td>${item.event || ''}</td>`;
+                tr.onclick = function() { selectEvent(currentIdx, this); };
                 tbody.appendChild(tr);
             });
 
-            // 確保圖片載入後同步尺寸
-            if (mapImg.complete) {
-                syncOverlaySize();
-            } else {
-                mapImg.onload = syncOverlaySize;
-            }
+            if (mapImg.complete) syncOverlaySize();
+            else mapImg.onload = syncOverlaySize;
+
         } catch (err) {
-            console.error("資料載入失敗:", err);
+            console.error("載入失敗:", err);
         }
     }
 
@@ -152,12 +164,8 @@
         if (currentMap === target) return;
         currentMap = target;
         const newSrc = target === 'large' ? 'Abraham_1_Cute.png' : 'Abraham_2_Cute.png';
-        
         return new Promise(resolve => {
-            mapImg.onload = () => {
-                syncOverlaySize();
-                resolve();
-            };
+            mapImg.onload = () => { syncOverlaySize(); resolve(); };
             mapImg.src = newSrc;
         });
     }
@@ -171,7 +179,6 @@
         
         let activePlaces = [], needLarge = false;
 
-        // 判定地圖切換邏輯
         places.forEach(p => {
             if (coordsSmall[p]) {
                 activePlaces.push({ ...coordsSmall[p], name: p });
@@ -196,7 +203,6 @@
         const currentCoords = type === 'large' ? coordsLarge : coordsSmall;
         const activeNames = actives.map(a => a.name);
 
-        // 畫路徑線
         if(actives.length > 1) {
             for(let i=0; i<actives.length-1; i++) {
                 const p1 = currentCoords[actives[i].name];
@@ -211,20 +217,17 @@
             }
         }
 
-        // 渲染所有標記
         Object.keys(currentCoords).forEach(name => {
             const loc = currentCoords[name];
             const isActive = activeNames.includes(name);
             const m = document.createElement('div');
-            
-            m.style.left = loc.x + '%'; 
-            m.style.top = loc.y + '%';
+            m.style.left = loc.x + '%'; m.style.top = loc.y + '%';
             
             if (isActive) {
                 m.className = 'marker active';
                 m.textContent = name;
                 markerLayer.appendChild(m);
-            } else if ((freqMap[name] || 0) > 2) { // 頻率高的地點才顯示文字
+            } else if ((freqMap[name] || 0) > 2) { 
                 m.className = 'marker low-priority';
                 m.textContent = name;
                 markerLayer.appendChild(m);
@@ -233,11 +236,7 @@
                 m.title = name;
                 markerLayer.appendChild(m);
             }
-            
-            m.onclick = (e) => {
-                e.stopPropagation();
-                flyTo([{...loc, name}]);
-            };
+            m.onclick = (e) => { e.stopPropagation(); flyTo([{...loc, name}]); };
         });
     }
 
@@ -256,11 +255,11 @@
 
     function showInfo(item, actives) {
         document.getElementById('info-box').style.display = 'flex';
+        document.getElementById('info-time').textContent = item.time || '';
         document.getElementById('info-title').textContent = item.event;
         document.getElementById('info-scripture').textContent = item.script;
-        document.getElementById('info-note').textContent = item.note;
+        document.getElementById('info-note').textContent = item.note || '無備註資訊';
 
-        // 顯示公里數 (從地點欄位抓取括號內容)
         const distArea = document.getElementById('info-dist-area');
         const distMatch = item.loc.match(/\(([^)]+)\)/);
         distArea.innerHTML = distMatch ? `<span class="dist-badge">📏 移動距離：${distMatch[1]}</span>` : '';
