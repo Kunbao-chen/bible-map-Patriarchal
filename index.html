@@ -3,53 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V5.5</title>
+    <title>亞伯拉罕史地互動地圖 V5.7</title>
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
-        :root { --gold: #c5a059; --dark: #2c3e50; --handle-bg: #e0e0e0; }
-        * { box-sizing: border-box; font-family: "微軟正黑體", sans-serif; touch-action: manipulation; }
-        body { margin: 0; padding: 0; display: flex; width: 100vw; height: 100vh; overflow: hidden; background: #111; }
+        :root { --gold: #c5a059; --dark: #2c3e50; --handle-bg: #ccc; }
+        * { box-sizing: border-box; font-family: "微軟正黑體", sans-serif; }
+        body { margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; background: #111; display: flex; }
 
-        /* 響應式佈局：桌面左右，手機上下 */
         #app-container { display: flex; width: 100%; height: 100%; flex-direction: row; }
-        @media (max-width: 768px) { #app-container { flex-direction: column; } }
+        @media (max-width: 800px) and (orientation: portrait) { #app-container { flex-direction: column; } }
 
-        /* 地圖區域 */
-        #map-section { flex: 1; position: relative; overflow: hidden; background: #1a1a1a; min-height: 200px; min-width: 200px; }
+        #map-section { flex: 1; position: relative; overflow: hidden; background: #1a1a1a; }
         #panzoom-element { display: inline-block; transform-origin: 0 0; }
         #bg-map { display: block; max-width: none; }
         
-        /* 地圖控制鈕：縮小並上移，避免被手機導航列遮擋 */
-        .map-controls { position: absolute; left: 12px; bottom: 40px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; }
-        .map-controls button { width: 38px; height: 38px; border-radius: 6px; border: 1px solid #ccc; background: rgba(255,255,255,0.85); font-size: 18px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+        .map-controls { position: absolute; left: 10px; bottom: 30px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; }
+        .map-controls button { width: 36px; height: 36px; border-radius: 6px; border: 1px solid #999; background: rgba(255,255,255,0.8); font-size: 16px; cursor: pointer; }
 
-        /* 分隔拉桿 (Resizer) */
-        #resizer { background: var(--handle-bg); position: relative; z-index: 1100; display: flex; align-items: center; justify-content: center; }
-        /* 桌面版拉桿：垂直條 */
-        @media (min-width: 769px) { #resizer { width: 8px; cursor: col-resize; height: 100%; } #resizer::after { content: "||"; color: #999; font-size: 12px; } }
-        /* 手機版拉桿：水平條 */
-        @media (max-width: 768px) { #resizer { height: 12px; cursor: row-resize; width: 100%; } #resizer::after { content: "=="; color: #999; font-size: 12px; } }
+        #resizer { background: var(--handle-bg); z-index: 1100; display: flex; align-items: center; justify-content: center; touch-action: none; }
+        @media (min-width: 801px), (orientation: landscape) { #resizer { width: 12px; cursor: col-resize; height: 100%; } #resizer::after { content: "⋮"; } }
+        @media (max-width: 800px) and (orientation: portrait) { #resizer { height: 16px; cursor: row-resize; width: 100%; } #resizer::after { content: "⋯"; } }
 
-        /* 側邊欄/資訊面板 */
-        #side-panel { width: 380px; background: white; display: flex; flex-direction: column; min-width: 280px; min-height: 150px; overflow: hidden; }
-        @media (max-width: 768px) { #side-panel { width: 100% !important; flex: 1; } }
+        #side-panel { width: 350px; background: white; display: flex; flex-direction: column; overflow: hidden; }
+        @media (max-width: 800px) and (orientation: portrait) { #side-panel { width: 100% !important; flex: 0.5; } }
 
-        /* 資訊區：修正無法捲動問題 */
-        #info-area { display: none; flex-direction: column; background: #fff; flex-shrink: 0; max-height: 70%; border-bottom: 4px solid #f0f0f0; }
-        #info-header { padding: 10px 15px; background: var(--dark); color: white; display: flex; justify-content: space-between; align-items: center; }
-        #info-body { padding: 15px; overflow-y: auto; font-size: 14px; line-height: 1.5; }
+        /* 資訊區導航按鈕樣式 */
+        #info-area { display: none; flex-direction: column; background: #fff; flex-shrink: 0; border-bottom: 3px solid #eee; }
+        #info-header { padding: 8px 15px; background: var(--dark); color: white; display: flex; justify-content: space-between; align-items: center; }
+        .nav-btns { display: flex; gap: 5px; }
+        .nav-btns button { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        .nav-btns button:hover { background: var(--gold); }
 
-        /* 清單區 */
+        #info-body { padding: 15px; overflow-y: auto; font-size: 14px; line-height: 1.5; max-height: 40vh; }
+        .info-title { color: var(--gold); margin: 0 0 5px 0; font-size: 18px; }
+
         #list-container { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
         table { width: 100%; border-collapse: collapse; }
         th { background: #f8f9fa; position: sticky; top: 0; padding: 10px; text-align: left; z-index: 10; border-bottom: 2px solid #ddd; }
-        td { padding: 12px 10px; border-bottom: 1px solid #eee; cursor: pointer; }
+        td { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 14px; }
         tr.active-row td { background: #fff9c4; font-weight: bold; border-left: 5px solid var(--gold); }
-        .spacer { height: 120px; }
+        .spacer { height: 150px; }
 
-        /* 標記 */
-        .marker { position: absolute; transform: translate(-50%, -50%); padding: 3px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; background: white; border: 1px solid #777; pointer-events: auto; }
-        .marker.highlight { background: var(--gold); color: white; border-color: #fff; z-index: 100; }
+        .marker { position: absolute; transform: translate(-50%, -50%); padding: 2px 6px; border-radius: 10px; font-size: 11px; font-weight: bold; background: rgba(255,255,255,0.9); border: 1px solid #888; white-space: nowrap; pointer-events: none; z-index: 5; }
+        .marker.highlight { background: var(--gold); color: white; border-color: #fff; z-index: 1000 !important; font-size: 13px; box-shadow: 0 0 8px var(--gold); }
     </style>
 </head>
 <body>
@@ -74,21 +70,24 @@
 
     <div id="side-panel">
         <div id="info-area">
-            <div id="info-header" onclick="toggleInfo()">
-                <span id="header-title">📜 事件詳情</span>
-                <span id="info-arrow">▼</span>
+            <div id="info-header">
+                <div onclick="toggleInfo()" style="cursor:pointer; flex:1;">📜 詳細資訊 <span id="info-arrow">▼</span></div>
+                <div class="nav-btns">
+                    <button onclick="navEvent(-1)">◀ 上一個</button>
+                    <button onclick="navEvent(1)">下一個 ▶</button>
+                </div>
             </div>
             <div id="info-body">
-                <div id="info-time" style="color:#888; font-size:12px;"></div>
-                <h3 id="info-title" style="margin:5px 0; color:var(--gold);"></h3>
-                <div id="info-path" style="background:#eee; padding:8px; border-radius:4px; margin-bottom:10px;"></div>
+                <div id="info-time" style="color:#999; font-size:11px;"></div>
+                <h3 id="info-title" class="info-title"></h3>
+                <div id="info-path" style="background:#f1f1f1; padding:8px; border-radius:4px; margin-bottom:10px;"></div>
                 <p><strong>經文：</strong><span id="info-script" style="color:#2980b9;"></span></p>
-                <div id="info-note" style="border-top:1px solid #ddd; padding-top:10px; font-size:13px; color:#444;"></div>
+                <div id="info-note" style="border-top:1px solid #ddd; padding-top:10px; font-size:13px; color:#555;"></div>
             </div>
         </div>
         <div id="list-container">
             <table>
-                <thead><tr><th width="45">#</th><th>聖經關鍵事件</th></tr></thead>
+                <thead><tr><th width="45">序號</th><th>聖經關鍵事件</th></tr></thead>
                 <tbody id="table-body"></tbody>
             </table>
             <div class="spacer"></div>
@@ -98,62 +97,76 @@
 
 <script>
     let pz, eventData = [], coordsSmall = {}, coordsLarge = {};
-    let currentMap = 'small';
+    let currentMap = 'small', currentEventIdx = -1;
+    let locationFrequency = {}; // 儲存地點出現頻率
 
-    // === 核心修復：更聰明的地圖切換邏輯 ===
-    function checkNeedLarge(locString) {
-        const targets = locString.split('→').map(p => p.replace(/\(.*?\)/g, '').trim());
-        // 修正 77 筆問題：只要地點不在小圖庫，且在大圖庫找得到（模糊匹配），就切換
-        return targets.some(p => {
-            const inSmall = !!findInDB(p, coordsSmall);
-            const inLarge = !!findInDB(p, coordsLarge);
-            return !inSmall && inLarge; 
-        });
-    }
-
-    function findInDB(name, db) {
-        if (!name) return null;
-        if (db[name]) return { ...db[name], n: name };
-        for (let key in db) { if (name.includes(key) || key.includes(name)) return { ...db[key], n: key }; }
-        return null;
-    }
-
-    // === 面板拉動 (Resizer) 邏輯 ===
-    const resizer = document.getElementById('resizer');
-    const sidePanel = document.getElementById('side-panel');
-    const mapSection = document.getElementById('map-section');
-
-    resizer.addEventListener('mousedown', initDrag);
-    resizer.addEventListener('touchstart', initDrag);
-
-    function initDrag(e) {
-        e.preventDefault();
-        window.addEventListener('mousemove', doDrag);
-        window.addEventListener('mouseup', stopDrag);
-        window.addEventListener('touchmove', doDrag);
-        window.addEventListener('touchend', stopDrag);
-    }
-
-    function doDrag(e) {
-        const clientX = e.clientX || (e.touches ? e.touches[0].clientX : 0);
-        const clientY = e.clientY || (e.touches ? e.touches[0].clientY : 0);
-        
-        if (window.innerWidth > 768) {
-            const newWidth = window.innerWidth - clientX;
-            sidePanel.style.width = newWidth + 'px';
-        } else {
-            const newHeight = window.innerHeight - clientY;
-            sidePanel.style.height = newHeight + 'px';
+    // === 導航功能 ===
+    function navEvent(step) {
+        let newIdx = currentEventIdx + step;
+        if (newIdx >= 0 && newIdx < eventData.length) {
+            const rows = document.getElementById('table-body').rows;
+            selectEvent(newIdx, rows[newIdx]);
+            // 自動捲動清單使選中項可見
+            rows[newIdx].scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
-        syncOverlay();
     }
 
-    function stopDrag() {
-        window.removeEventListener('mousemove', doDrag);
-        window.removeEventListener('touchmove', doDrag);
+    // === 核心：計算優先權並渲染 (防碰撞) ===
+    function renderMarkersWithPriority(db, actives) {
+        const ml = document.getElementById('marker-layer'), sl = document.getElementById('svg-layer');
+        ml.innerHTML = ''; sl.innerHTML = '';
+        
+        // 1. 繪製路徑
+        if (actives.length > 1) {
+            for (let i = 0; i < actives.length - 1; i++) {
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', actives[i].x+'%'); line.setAttribute('y1', actives[i].y+'%');
+                line.setAttribute('x2', actives[i+1].x+'%'); line.setAttribute('y2', actives[i+1].y+'%');
+                line.setAttribute('stroke', '#e74c3c'); line.setAttribute('stroke-width', '2'); line.setAttribute('stroke-dasharray', '4,4');
+                sl.appendChild(line);
+            }
+        }
+
+        // 2. 準備所有標記並賦予優先權分數
+        const markerList = Object.keys(db).map(name => {
+            const isA = actives.some(a => a.n === name);
+            // 優先權分數 = (是否為當前事件 * 10000) + 出現頻率
+            const score = (isA ? 10000 : 0) + (locationFrequency[name] || 0);
+            
+            const div = document.createElement('div');
+            div.className = isA ? 'marker highlight' : 'marker';
+            div.style.left = db[name].x + '%'; div.style.top = db[name].y + '%';
+            div.innerText = name;
+            div.style.visibility = 'hidden'; // 先隱藏以計算位置
+            ml.appendChild(div);
+            
+            return { el: div, score: score, active: isA };
+        });
+
+        // 3. 根據優先權排序 (高分在前)
+        markerList.sort((a, b) => b.score - a.score);
+
+        // 4. 碰撞檢查
+        setTimeout(() => {
+            const occupiedRects = [];
+            markerList.forEach(item => {
+                const rect = item.el.getBoundingClientRect();
+                // 檢查是否與更高優先權的標記重疊
+                const isOverlapping = occupiedRects.some(r => {
+                    return !(rect.right < r.left || rect.left > r.right || rect.bottom < r.top || rect.top > r.bottom);
+                });
+
+                if (item.active || !isOverlapping) {
+                    item.el.style.visibility = 'visible';
+                    occupiedRects.push(rect);
+                } else {
+                    item.el.style.display = 'none'; // 隱藏重疊且低優先權的地名
+                }
+            });
+        }, 30);
     }
 
-    // === 資料處理與顯示 ===
+    // === 資料載入與頻率統計 ===
     async function loadData() {
         const t = Date.now();
         const [s, l, d] = await Promise.all([
@@ -165,20 +178,31 @@
         parseCSV(s).forEach(r => { if(r[1]) coordsSmall[r[1].trim()] = {x:r[5], y:r[6]}; });
         parseCSV(l).forEach(r => { if(r[1]) coordsLarge[r[1].trim()] = {x:r[5], y:r[6]}; });
 
+        const rows = parseCSV(d);
+        // 統計頻率：掃描第 3 欄 (索引 2)
+        rows.slice(1).forEach(r => {
+            if (r[2]) {
+                const locs = r[2].split('→').map(p => p.replace(/\(.*?\)/g, '').trim());
+                locs.forEach(name => {
+                    if(name) locationFrequency[name] = (locationFrequency[name] || 0) + 1;
+                });
+            }
+        });
+
         const tbody = document.getElementById('table-body');
-        eventData = parseCSV(d).slice(1).filter(r => r.length > 2).map((r, i) => {
+        eventData = rows.slice(1).filter(r => r.length > 2).map((r, i) => {
             const tr = document.createElement('tr');
             tr.innerHTML = `<td>${r[0]||''}</td><td>${r[2]||''}</td>`;
             tr.onclick = () => selectEvent(i, tr);
             tbody.appendChild(tr);
             return { id:r[0], time:r[1], event:r[2], loc:r[3], script:r[4], note:r[5] };
         });
-
         document.getElementById('bg-map').onload = syncOverlay;
         syncOverlay();
     }
 
     async function selectEvent(idx, tr) {
+        currentEventIdx = idx;
         document.querySelectorAll('tr').forEach(r => r.classList.remove('active-row'));
         tr.classList.add('active-row');
         const item = eventData[idx];
@@ -195,50 +219,48 @@
         const rawLocs = item.loc.split('→').map(p => p.replace(/\(.*?\)/g, '').trim());
         const actives = rawLocs.map(p => findInDB(p, db)).filter(p => p);
 
-        renderMarkers(db, actives);
+        renderMarkersWithPriority(db, actives);
         if (actives.length) flyTo(actives);
         updateInfoPanel(item);
     }
 
-    function renderMarkers(db, actives) {
-        const ml = document.getElementById('marker-layer'), sl = document.getElementById('svg-layer');
-        ml.innerHTML = ''; sl.innerHTML = '';
-        
-        if (actives.length > 1) {
-            for (let i = 0; i < actives.length - 1; i++) {
-                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                line.setAttribute('x1', actives[i].x+'%'); line.setAttribute('y1', actives[i].y+'%');
-                line.setAttribute('x2', actives[i+1].x+'%'); line.setAttribute('y2', actives[i+1].y+'%');
-                line.setAttribute('stroke', '#e74c3c'); line.setAttribute('stroke-width', '3'); line.setAttribute('stroke-dasharray', '5,5');
-                sl.appendChild(line);
-            }
-        }
+    // (其餘 flyTo, checkNeedLarge, findInDB, parseCSV, syncOverlay 等函式保持與 V5.6 相同，確保定位精準)
+    function flyTo(pts) {
+        if (!pts.length) return;
+        const img = document.getElementById('bg-map'), mapSection = document.getElementById('map-section');
+        let sx=0, sy=0; pts.forEach(p => { sx += parseFloat(p.x); sy += parseFloat(p.y); });
+        const targetX = (sx/pts.length/100) * img.naturalWidth, targetY = (sy/pts.length/100) * img.naturalHeight;
+        const scale = pz.getScale();
+        pz.pan((mapSection.offsetWidth/2)-(targetX*scale), (mapSection.offsetHeight/2)-(targetY*scale), {animate:true});
+    }
 
-        Object.keys(db).forEach(name => {
-            const isA = actives.some(a => a.n === name);
-            const m = document.createElement('div');
-            m.className = isA ? 'marker highlight' : 'marker';
-            m.style.left = db[name].x + '%'; m.style.top = db[name].y + '%';
-            m.innerText = name;
-            ml.appendChild(m);
+    function checkNeedLarge(locString) {
+        const targets = locString.split('→').map(p => p.replace(/\(.*?\)/g, '').trim()).filter(p=>p);
+        return targets.some(p => {
+            return !!findInDB(p, coordsLarge) && !findInDB(p, coordsSmall);
         });
+    }
+
+    function findInDB(name, db) {
+        if (db[name]) return { ...db[name], n: name };
+        for (let key in db) { if (name.includes(key) || key.includes(name)) return { ...db[key], n: key }; }
+        return null;
     }
 
     function updateInfoPanel(item) {
         document.getElementById('info-area').style.display = 'flex';
         document.getElementById('info-title').innerText = item.event;
         document.getElementById('info-time').innerText = item.time;
-        document.getElementById('info-path').innerText = `路徑：${item.loc}`;
+        document.getElementById('info-path').innerText = `地點：${item.loc}`;
         document.getElementById('info-script').innerText = item.script;
         document.getElementById('info-note').innerText = item.note;
-        document.getElementById('info-body').scrollTop = 0; // 每次切換回到頂部
+        document.getElementById('info-body').scrollTop = 0;
     }
 
     function toggleInfo() {
         const body = document.getElementById('info-body');
-        const arrow = document.getElementById('info-arrow');
-        body.style.display = (body.style.display === 'none') ? 'block' : 'none';
-        arrow.innerText = (body.style.display === 'none') ? '▲' : '▼';
+        body.style.display = body.style.display === 'none' ? 'block' : 'none';
+        document.getElementById('info-arrow').innerText = body.style.display === 'none' ? '▲' : '▼';
     }
 
     function parseCSV(t) {
@@ -258,21 +280,28 @@
     }
 
     function syncOverlay() {
-        const img = document.getElementById('bg-map');
-        const ov = document.getElementById('overlay-container');
+        const img = document.getElementById('bg-map'), ov = document.getElementById('overlay-container');
         ov.style.width = img.clientWidth + 'px'; ov.style.height = img.clientHeight + 'px';
     }
 
-    function flyTo(pts) {
-        let sx=0, sy=0;
-        pts.forEach(p => { sx += parseFloat(p.x); sy += parseFloat(p.y); });
-        const tx = (sx/pts.length/100)*document.getElementById('bg-map').clientWidth;
-        const ty = (sy/pts.length/100)*document.getElementById('bg-map').clientHeight;
-        const sc = pz.getScale();
-        pz.pan((document.getElementById('map-section').offsetWidth/2)-(tx*sc), (document.getElementById('map-section').offsetHeight/2)-(ty*sc), {animate:true});
-    }
-
     function resetView() { pz.reset(); }
+
+    // 面板拖動 (Resizer) - 沿用 V5.6 邏輯
+    const resizer = document.getElementById('resizer'), sidePanel = document.getElementById('side-panel');
+    function initDrag(e) {
+        e.preventDefault();
+        const moveHandler = (m) => {
+            const x = m.clientX || (m.touches ? m.touches[0].clientX : 0), y = m.clientY || (m.touches ? m.touches[0].clientY : 0);
+            const isP = window.innerHeight > window.innerWidth && window.innerWidth < 800;
+            if (!isP) sidePanel.style.width = (window.innerWidth - x) + 'px';
+            else sidePanel.style.height = (window.innerHeight - y) + 'px';
+            syncOverlay();
+        };
+        const endHandler = () => { window.removeEventListener('mousemove', moveHandler); window.removeEventListener('touchmove', moveHandler); };
+        window.addEventListener('mousemove', moveHandler); window.addEventListener('touchmove', moveHandler, {passive:false});
+        window.addEventListener('mouseup', endHandler); window.addEventListener('touchend', endHandler);
+    }
+    resizer.addEventListener('mousedown', initDrag); resizer.addEventListener('touchstart', initDrag, {passive:false});
 
     window.onload = () => {
         pz = Panzoom(document.getElementById('panzoom-element'), { maxScale: 5, minScale: 0.1, contain: 'outside' });
