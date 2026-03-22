@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V8.1</title>
+    <title>亞伯拉罕史地互動地圖 V8.2</title>
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
         :root { --gold: #c5a059; --dark: #2c3e50; --handle-bg: #ddd; }
@@ -19,8 +19,8 @@
 
         /* 地圖區 */
         #map-section { flex: 1; position: relative; overflow: hidden; background: #1a1a1a; }
-        /* 關鍵修正：origin 必須在左上角，pan 的計算才會跟圖片百分比完全線性對齊 */
-        #panzoom-element { display: inline-block; transform-origin: 0 0 !important; }
+        /* 關鍵修正：移除 origin 覆寫，讓 Panzoom 使用預設的 50% 50%，恢復正常的邊界偵測 */
+        #panzoom-element { display: inline-block; }
         #bg-map { display: block; max-width: none; user-select: none; -webkit-user-drag: none; }
         
         .map-controls { position: absolute; left: 15px; bottom: 30px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; }
@@ -97,9 +97,7 @@
                 <div id="info-note" style="border-top:1px solid #eee; padding-top:10px; font-size:14px; color:#555;"></div>
             </div>
         </div>
-
         <div id="resizer-inner"></div>
-
         <div id="list-container">
             <table>
                 <thead><tr><th width="50">序號</th><th>聖經關鍵事件</th></tr></thead>
@@ -113,34 +111,53 @@
     let pz, eventData = [], coordsSmall = {}, coordsLarge = {};
     let currentMap = 'small', currentEventIdx = -1, locationFrequency = {};
 
-    // === 核心修正：FlyTo 極限對齊 (不露黑邊) ===
+    // === 核心防護：動態黑邊守門員 ===
+    function updateMinScale() {
+        const img = document.getElementById('bg-map');
+        const container = document.getElementById('map-section');
+        if (!img.offsetWidth || !container.clientWidth) return;
+        
+        // 精算「剛好填滿容器」所需的最小倍率
+        const minW = container.clientWidth / img.offsetWidth;
+        const minH = container.clientHeight / img.offsetHeight;
+        const absoluteMinScale = Math.max(minW, minH);
+        
+        // 鎖死 Panzoom 的最小縮放，杜絕使用者按出黑邊
+        pz.setOptions({ minScale: absoluteMinScale });
+        
+        // 如果側邊欄拉動導致地圖區變大，強迫圖片放大以填補可能出現的黑邊
+        if (pz.getScale() < absoluteMinScale) {
+            pz.zoom(absoluteMinScale, { animate: true });
+        }
+    }
+
+    // === 完美置中公式 (適配原生 50% Origin) ===
     function flyTo(pts) {
         if (!pts.length) return;
         const img = document.getElementById('bg-map');
         const container = document.getElementById('map-section');
         
-        // 抓取精確的原始尺寸
-        const baseW = img.naturalWidth || img.offsetWidth;
-        const baseH = img.naturalHeight || img.offsetHeight;
+        const baseW = img.offsetWidth;
+        const baseH = img.offsetHeight;
 
         let tx = 0, ty = 0;
         pts.forEach(p => { tx += parseFloat(p.x); ty += parseFloat(p.y); });
         const pctX = (tx / pts.length) / 100;
         const pctY = (ty / pts.length) / 100;
 
+        const px = pctX * baseW;
+        const py = pctY * baseH;
+
         const scale = pz.getScale();
         
-        // 公式：(容器寬度/2) - (點位百分比 * 圖片原始寬 * 當前倍率)
-        // 因為 origin 是 0 0，所以這個物理像素位移是絕對精確的
-        const targetPanX = (container.clientWidth / 2) - (pctX * baseW * scale);
-        const targetPanY = (container.clientHeight / 2) - (pctY * baseH * scale);
+        // 這是與 Panzoom 內部演算法完全契合的物理對齊公式。
+        // 當位移超出邊界時，Panzoom 現在能正確判斷並將圖片停在「極限緊貼黑邊」的位置。
+        const targetPanX = (container.clientWidth / 2) - (baseW / 2) - (px - baseW / 2) * scale;
+        const targetPanY = (container.clientHeight / 2) - (baseH / 2) - (py - baseH / 2) * scale;
 
-        // 執行位移。Panzoom 設有 contain: 'outside'，它會自動把 targetPanX 
-        // 限制在「不露出黑邊」的極限值內。
         pz.pan(targetPanX, targetPanY, { animate: true });
     }
 
-    // === 按鈕功能：資訊區收折 ===
     function toggleInfo() {
         const body = document.getElementById('info-body'), arrow = document.getElementById('info-arrow');
         const resizer = document.getElementById('resizer-inner'), area = document.getElementById('info-area');
@@ -153,7 +170,6 @@
         }
     }
 
-    // === 拉桿與資料載入邏輯 (沿用穩定版) ===
     function initResizers() {
         const rMain = document.getElementById('resizer-main'), side = document.getElementById('side-panel');
         const dragM = (e) => {
@@ -161,6 +177,7 @@
             if (window.innerHeight > window.innerWidth) side.style.flex = `0 0 ${window.innerHeight - y}px`;
             else side.style.width = `${window.innerWidth - x}px`;
             syncOverlay();
+            updateMinScale(); // 確保拉動容器時，防黑邊機制立刻發揮作用
         };
         rMain.onmousedown = () => { window.onmousemove = dragM; window.onmouseup = () => window.onmousemove = null; };
         rMain.ontouchmove = dragM;
@@ -216,11 +233,18 @@
             const n = p.replace(/\(.*?\)/g, '').trim();
             return !!findInDB(n, coordsLarge) && !findInDB(n, coordsSmall);
         });
+        
         if (currentMap !== (needLarge ? 'large' : 'small')) {
             currentMap = needLarge ? 'large' : 'small';
-            document.getElementById('bg-map').src = needLarge ? 'Abraham_1_Cute.png' : 'Abraham_2_Cute.png';
-            await new Promise(res => document.getElementById('bg-map').onload = res);
-            syncOverlay();
+            const bgImg = document.getElementById('bg-map');
+            bgImg.src = needLarge ? 'Abraham_1_Cute.png' : 'Abraham_2_Cute.png';
+            await new Promise(res => {
+                bgImg.onload = () => {
+                    syncOverlay();
+                    updateMinScale(); // 換圖後，強制重新計算黑邊防護
+                    res();
+                };
+            });
         }
         const db = currentMap === 'large' ? coordsLarge : coordsSmall;
         const actives = item.loc.split('→').map(p => findInDB(p.replace(/\(.*?\)/g, '').trim(), db)).filter(p => p);
@@ -306,17 +330,25 @@
     window.onload = () => {
         pz = Panzoom(document.getElementById('panzoom-element'), { 
             maxScale: 8, 
-            minScale: 0.1, 
-            contain: 'outside' // 嚴格遵守：不允許黑邊
+            contain: 'outside' // 保留不露黑邊的基礎設定
         });
         document.getElementById('map-section').addEventListener('wheel', pz.zoomWithWheel);
         loadData(); initResizers();
+        
+        // 給渲染一點緩衝時間，確保拿到正確的物理像素來鎖死黑邊
+        setTimeout(() => {
+            syncOverlay();
+            updateMinScale();
+        }, 150);
     };
 
     window.addEventListener('resize', () => {
         document.getElementById('side-panel').style.width = '';
         document.getElementById('side-panel').style.flex = '';
-        setTimeout(syncOverlay, 150);
+        setTimeout(() => {
+            syncOverlay();
+            updateMinScale(); // 旋轉螢幕或調整視窗大小時，重新鎖定黑邊防護
+        }, 150);
     });
 </script>
 </body>
