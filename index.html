@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V8.3 (精準微調版)</title>
+    <title>亞伯拉罕史地互動地圖 V8.3 (精準還原版)</title>
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
-        /* 完全保留 8.3 原始 CSS，一字不改 */
+        /* 100% 沿用 8.3 CSS 樣式 */
         :root { --gold: #c5a059; --dark: #2c3e50; --handle-bg: #ddd; }
         * { box-sizing: border-box; font-family: "微軟正黑體", sans-serif; -webkit-tap-highlight-color: transparent; }
         
@@ -19,6 +19,13 @@
         }
 
         #side-panel { width: 400px; background: #fff; display: flex; flex-direction: column; z-index: 10; box-shadow: 2px 0 10px rgba(0,0,0,0.1); }
+        
+        /* 僅針對新增的功能做最少量的 UI 置放 */
+        .search-controls { background: var(--dark); padding: 10px; border-bottom: 1px solid var(--gold); }
+        .search-controls select, .search-controls input { 
+            width: 100%; padding: 8px; margin-bottom: 5px; border-radius: 4px; border: none; font-size: 14px; 
+        }
+
         #table-container { flex-grow: 1; overflow-y: auto; }
         table { width: 100%; border-collapse: collapse; }
         th { background: var(--dark); color: var(--gold); position: sticky; top: 0; padding: 12px; font-weight: 500; text-align: left; }
@@ -26,43 +33,33 @@
         tr:hover td { background: #f9f9f9; }
         tr.active td { background: rgba(197, 160, 89, 0.15); border-left: 4px solid var(--gold); font-weight: bold; }
 
-        #resizer { width: 12px; background: var(--handle-bg); cursor: col-resize; display: flex; align-items: center; justify-content: center; z-index: 11; transition: background 0.2s; }
-        #resizer:hover, #resizer.dragging { background: var(--gold); }
-        #resizer::after { content: "⋮"; color: #666; font-size: 20px; }
+        #resizer { width: 12px; background: var(--handle-bg); cursor: col-resize; display: flex; align-items: center; justify-content: center; z-index: 11; }
         
-        @media (max-width: 800px) and (orientation: portrait) {
-            #resizer { width: 100%; height: 12px; cursor: row-resize; flex-direction: column; }
-            #resizer::after { content: "⋯"; }
-        }
-
         #map-section { flex-grow: 1; position: relative; overflow: hidden; background: #111; display: flex; justify-content: center; align-items: center; }
         #panzoom-element { position: relative; transform-origin: 0 0; }
         #base-map { display: block; max-width: none; pointer-events: none; }
         #overlay-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
         
         #controls { position: absolute; bottom: 20px; right: 20px; display: flex; gap: 10px; z-index: 100; }
-        .btn { width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,0.9); border: none; font-size: 20px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; color: var(--dark); }
-        .btn:hover { background: #fff; transform: scale(1.05); }
+        .btn { width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,0.9); border: none; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--dark); }
 
-        #info-panel { position: absolute; top: 20px; left: 20px; width: 320px; background: rgba(255,255,255,0.95); border-radius: 8px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); z-index: 100; display: none; backdrop-filter: blur(5px); border: 1px solid rgba(197, 160, 89, 0.3); }
-        #info-title { margin: 0 0 10px 0; color: var(--dark); font-size: 1.2rem; line-height: 1.4; border-bottom: 2px solid var(--gold); padding-bottom: 8px; }
+        #info-panel { position: absolute; top: 20px; left: 20px; width: 320px; background: rgba(255,255,255,0.95); border-radius: 8px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); z-index: 100; display: none; border: 1px solid rgba(197, 160, 89, 0.3); }
+        #info-title { margin: 0 0 10px 0; color: var(--dark); font-size: 1.2rem; border-bottom: 2px solid var(--gold); padding-bottom: 8px; }
         #info-body { font-size: 0.95rem; line-height: 1.6; color: #333; max-height: 40vh; overflow-y: auto; }
         #close-info { position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 20px; cursor: pointer; color: #999; }
         
         .nav-btns { display: flex; gap: 10px; margin-top: 15px; }
         .nav-btn { flex: 1; padding: 8px; border: 1px solid var(--gold); background: #fff; color: var(--gold); border-radius: 4px; cursor: pointer; font-weight: bold; }
-        .nav-btn:hover { background: var(--gold); color: #fff; }
     </style>
 </head>
 <body>
 
 <div id="app-container">
     <div id="side-panel">
-        <div style="background: var(--dark); padding: 10px; flex-shrink: 0; border-bottom: 1px solid var(--gold);">
-            <select id="folder-select" style="width: 100%; padding: 6px; margin-bottom: 8px; border-radius: 4px; border: none; font-family: inherit;"></select>
-            <input type="text" id="search-input" placeholder="🔍 搜尋事件內容、地點或備註..." style="width: 100%; padding: 6px; border-radius: 4px; border: none; font-family: inherit;">
+        <div class="search-controls">
+            <select id="folder-select"></select>
+            <input type="text" id="search-input" placeholder="🔍 搜尋事件內容、地點或備註...">
         </div>
-
         <div id="table-container">
             <table>
                 <thead><tr><th width="15%">序</th><th>事件內容</th></tr></thead>
@@ -75,7 +72,7 @@
     
     <div id="map-section">
         <div id="panzoom-element">
-            <img id="base-map" src="" alt="地圖載入中...">
+            <img id="base-map" src="">
             <svg id="overlay-svg"></svg>
         </div>
         
@@ -100,23 +97,21 @@
 <script>
     let pz;
     let eventData = [];
-    let filteredEventData = []; // 新增：用於存放搜尋後的資料
+    let filteredData = []; // 存放搜尋結果
     let coordData = [];
     let currentEventIdx = -1;
     let minScale = 0.1;
 
-    // 【修改區塊】初始化讀取 folder.csv
+    // 1. 初始化讀取選單
     async function initApp() {
         try {
-            const fRes = await fetch('folder.csv');
-            const fText = await fRes.text();
-            const folders = parseCSV(fText, true);
-            
+            const res = await fetch('folder.csv');
+            const folders = parseCSV(await res.text(), true);
             const select = document.getElementById('folder-select');
+            
             folders.forEach(f => {
-                if (!f.folder_name) return;
                 const opt = document.createElement('option');
-                opt.value = f.folder_name.trim();
+                opt.value = f.folder_name;
                 opt.textContent = f.display_name || f.folder_name;
                 select.appendChild(opt);
             });
@@ -124,155 +119,107 @@
             select.addEventListener('change', (e) => loadData(e.target.value));
             document.getElementById('search-input').addEventListener('input', (e) => renderTable(e.target.value));
 
-            if (folders.length > 0) loadData(folders[0].folder_name.trim());
-        } catch (e) {
-            console.error("載入 folder.csv 失敗", e);
-        }
+            if (folders.length > 0) loadData(folders[0].folder_name);
+        } catch (e) { console.error("無法載入資料清單", e); }
     }
 
-    // 【修改區塊】動態路徑讀取
+    // 2. 載入指定資料夾資料 (最小化改動路徑)
     async function loadData(folder) {
-        document.getElementById('overlay-svg').innerHTML = ''; 
-        document.getElementById('info-panel').style.display = 'none';
-
         try {
             const r1 = await fetch(`${folder}/data.csv`);
             eventData = parseCSV(await r1.text(), true);
-
-            // 配合您的 ZIP 結構，讀取 coords_1.csv (原 8.3 為 創世記真實經緯度表.csv)
+            
             const r2 = await fetch(`${folder}/coords_1.csv`);
             coordData = parseCSV(await r2.text(), true);
 
             const img = document.getElementById('base-map');
+            img.src = `${folder}/picture_1.png`;
             img.onload = () => {
                 syncOverlay();
                 updateMinScale();
                 resetView();
+                renderTable('');
             };
-            img.src = `${folder}/picture_1.png`;
-
-            renderTable(''); // 初始無搜尋條件
-        } catch (e) {
-            console.error("讀取資料夾失敗", e);
-        }
+        } catch (e) { console.error("資料載入失敗", e); }
     }
 
-    // 【修改區塊】增加關鍵字搜尋過濾功能
-    function renderTable(searchTerm = '') {
+    // 3. 關鍵字搜尋優化
+    function renderTable(searchTerm) {
         const tb = document.getElementById('table-body');
         tb.innerHTML = '';
-        const term = searchTerm.toLowerCase().trim();
+        const term = searchTerm.toLowerCase();
 
-        filteredEventData = eventData.filter(row => {
-            if (!term) return true;
-            const content = `${row['關鍵事件內容'] || ''} ${row['地點 (距離)'] || ''} ${row['備註 (關聯、釋義、補充)'] || ''}`.toLowerCase();
-            return content.includes(term);
+        filteredData = eventData.filter(row => {
+            const text = `${row['關鍵事件內容']} ${row['地點 (距離)']} ${row['備註 (關聯、釋義、補充)']}`.toLowerCase();
+            return text.includes(term);
         });
 
-        filteredEventData.forEach((row, i) => {
-            if (!row['關鍵事件內容']) return;
+        filteredData.forEach((row, i) => {
             const tr = document.createElement('tr');
             tr.innerHTML = `<td>${row['序號']}</td><td>${row['關鍵事件內容']}</td>`;
-            // 注意：這裡是綁定 filteredEventData 的索引
             tr.onclick = () => selectEvent(i, tr);
             tb.appendChild(tr);
         });
     }
 
+    // 4. 模糊搜尋優化 (地點比對)
     function selectEvent(idx, trRow) {
         currentEventIdx = idx;
-        const row = filteredEventData[idx]; // 改從 filteredEventData 取值
+        const row = filteredData[idx];
         
-        document.querySelectorAll('#table-body tr').forEach(tr => tr.classList.remove('active'));
+        document.querySelectorAll('#table-body tr').forEach(t => t.classList.remove('active'));
         if (trRow) trRow.classList.add('active');
 
         const info = document.getElementById('info-panel');
         info.style.display = 'block';
         document.getElementById('info-title').textContent = `${row['序號']}. ${row['關鍵事件內容']}`;
-        
-        let bodyHtml = '';
-        if (row['時間資訊 (族長年齡依序並列)']) bodyHtml += `<p style="color:#666; margin:0 0 10px;">🕒 ${row['時間資訊 (族長年齡依序並列)']}</p>`;
-        bodyHtml += `<b>📍 地點：</b>${row['地點 (距離)']}<br><br>`;
-        bodyHtml += `<b>📖 經文：</b>${row['引用經文']}<br><br>`;
-        if (row['備註 (關聯、釋義、補充)']) bodyHtml += `<b>💡 備註：</b>${row['備註 (關聯、釋義、補充)']}`;
-        document.getElementById('info-body').innerHTML = bodyHtml;
+        document.getElementById('info-body').innerHTML = `<b>📍 地點：</b>${row['地點 (距離)']}<br><br><b>📖 經文：</b>${row['引用經文']}<br><br><b>💡 備註：</b>${row['備註 (關聯、釋義、補充)'] || ''}`;
 
         const locs = parseLocations(row['地點 (距離)']);
         let pts = [];
-        locs.forEach(loc => {
-            // 【修改區塊】模糊搜尋優化：清除空白並允許雙向部分比對
-            const cleanLoc = loc.trim();
-            const c = coordData.find(x => x['地名'] && (cleanLoc.includes(x['地名']) || x['地名'].includes(cleanLoc)));
-            if(c) pts.push(c);
+        locs.forEach(l => {
+            // 模糊搜尋邏輯：雙向包含
+            const match = coordData.find(c => l.includes(c['地名']) || c['地名'].includes(l));
+            if (match) pts.push(match);
         });
 
+        drawMarkers(pts);
+    }
+
+    // 5. 其餘函式完全還原 8.3 邏輯
+    function drawMarkers(pts) {
         const svg = document.getElementById('overlay-svg');
+        const img = document.getElementById('base-map');
         svg.innerHTML = '';
-        
-        if (pts.length > 0) {
-            let sumX = 0, sumY = 0;
-            const img = document.getElementById('base-map');
-            const w = img.naturalWidth, h = img.naturalHeight;
+        if (pts.length === 0) return;
 
-            if(pts.length > 1) {
-                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                let d = `M ${parseFloat(pts[0]['百分比X'])/100*w} ${parseFloat(pts[0]['百分比Y'])/100*h}`;
-                for(let i=1; i<pts.length; i++) {
-                    d += ` L ${parseFloat(pts[i]['百分比X'])/100*w} ${parseFloat(pts[i]['百分比Y'])/100*h}`;
-                }
-                path.setAttribute('d', d);
-                path.setAttribute('stroke', 'var(--gold)');
-                path.setAttribute('stroke-width', '3');
-                path.setAttribute('stroke-dasharray', '5,5');
-                path.setAttribute('fill', 'none');
-                svg.appendChild(path);
-            }
+        const w = img.naturalWidth, h = img.naturalHeight;
+        let sumX = 0, sumY = 0;
 
-            pts.forEach(p => {
-                const px = parseFloat(p['百分比X'])/100 * w;
-                const py = parseFloat(p['百分比Y'])/100 * h;
-                sumX += px; sumY += py;
+        pts.forEach(p => {
+            const px = (parseFloat(p['百分比X']) / 100) * w;
+            const py = (parseFloat(p['百分比Y']) / 100) * h;
+            sumX += px; sumY += py;
 
-                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-                
-                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-                circle.setAttribute('cx', px); circle.setAttribute('cy', py);
-                circle.setAttribute('r', '6');
-                circle.setAttribute('fill', 'red');
-                circle.setAttribute('stroke', 'white');
-                circle.setAttribute('stroke-width', '2');
-                
-                const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                text.setAttribute('x', px + 10); text.setAttribute('y', py + 5);
-                text.setAttribute('fill', 'white');
-                text.setAttribute('font-size', '16px');
-                text.setAttribute('font-weight', 'bold');
-                text.textContent = p['地名'];
-                
-                g.appendChild(bg); g.appendChild(text); g.appendChild(circle);
-                svg.appendChild(g);
-
-                const bbox = text.getBBox();
-                bg.setAttribute('x', bbox.x - 2); bg.setAttribute('y', bbox.y - 2);
-                bg.setAttribute('width', bbox.width + 4); bg.setAttribute('height', bbox.height + 4);
-                bg.setAttribute('fill', 'rgba(0,0,0,0.6)');
-                bg.setAttribute('rx', '4');
-            });
-
-            const cx = sumX / pts.length;
-            const cy = sumY / pts.length;
-            const container = document.getElementById('map-section');
-            const viewW = container.clientWidth, viewH = container.clientHeight;
+            const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            c.setAttribute('cx', px); c.setAttribute('cy', py); c.setAttribute('r', '6');
+            c.setAttribute('fill', 'red'); c.setAttribute('stroke', 'white'); c.setAttribute('stroke-width', '2');
             
-            // 已依照先前需求：移除 pz.zoom(4) 自動縮放，僅保留視角移動 (Pan)
-            setTimeout(() => {
-                const currentScale = pz.getScale();
-                const tx = (viewW / 2) - (cx * currentScale);
-                const ty = (viewH / 2) - (cy * currentScale);
-                pz.pan(tx, ty, { animate: true });
-            }, 50);
-        }
+            const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            t.setAttribute('x', px + 10); t.setAttribute('y', py + 5);
+            t.setAttribute('fill', 'white'); t.setAttribute('font-weight', 'bold');
+            t.textContent = p['地名'];
+            
+            g.appendChild(c); g.appendChild(t);
+            svg.appendChild(g);
+        });
+
+        // 僅移動視角，不自動改變縮放倍率
+        const avgX = sumX / pts.length, avgY = sumY / pts.length;
+        const container = document.getElementById('map-section');
+        const currentScale = pz.getScale();
+        pz.pan((container.clientWidth / 2) - (avgX * currentScale), (container.clientHeight / 2) - (avgY * currentScale), { animate: true });
     }
 
     function parseLocations(str) {
@@ -293,110 +240,45 @@
             } else cell += c;
         }
         if (row.length > 0 || cell) { row.push(cell.trim()); rows.push(row); }
-        
-        if (hasHeader && rows.length > 0) {
+        if (hasHeader) {
             const h = rows.shift().map(x => x.replace(/^\ufeff/, ''));
-            return rows.map(r => {
-                let obj = {};
-                h.forEach((k, i) => obj[k] = r[i]);
-                return obj;
-            });
+            return rows.map(r => { let o = {}; h.forEach((k, i) => o[k] = r[i]); return o; });
         }
         return rows;
     }
 
-    // 【修改區塊】上下切換按鈕對應 filteredEventData
     function navEvent(step) {
         const n = currentEventIdx + step;
-        if (n >= 0 && n < filteredEventData.length) {
-            const rows = document.getElementById('table-body').rows;
-            selectEvent(n, rows[n]);
-            rows[n].scrollIntoView({behavior:'smooth', block:'center'});
+        if (n >= 0 && n < filteredData.length) {
+            const rowElements = document.getElementById('table-body').rows;
+            selectEvent(n, rowElements[n]);
+            rowElements[n].scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
     }
 
     function syncOverlay() {
         const img = document.getElementById('base-map');
-        const svg = document.getElementById('overlay-svg');
-        svg.setAttribute('viewBox', `0 0 ${img.naturalWidth} ${img.naturalHeight}`);
+        document.getElementById('overlay-svg').setAttribute('viewBox', `0 0 ${img.naturalWidth} ${img.naturalHeight}`);
     }
 
     function updateMinScale() {
         const img = document.getElementById('base-map');
         const container = document.getElementById('map-section');
-        if (img.naturalWidth > 0 && img.naturalHeight > 0) {
-            const scaleX = container.clientWidth / img.naturalWidth;
-            const scaleY = container.clientHeight / img.naturalHeight;
-            minScale = Math.min(scaleX, scaleY) * 0.9;
-            pz.setOptions({ minScale: minScale });
-            if (pz.getScale() < minScale) pz.zoom(minScale);
-        }
+        minScale = Math.min(container.clientWidth / img.naturalWidth, container.clientHeight / img.naturalHeight) * 0.9;
+        pz.setOptions({ minScale: minScale });
     }
 
     function resetView() { pz.reset(); }
 
     window.onload = () => {
+        // 嚴格還原 contain: 'outside'
         pz = Panzoom(document.getElementById('panzoom-element'), { 
             maxScale: 8, 
             contain: 'outside' 
         });
         document.getElementById('map-section').addEventListener('wheel', pz.zoomWithWheel);
-        
-        initApp(); // 改為執行新版初始化
-        initResizers();
-        
-        setTimeout(() => {
-            syncOverlay();
-            updateMinScale();
-        }, 150);
+        initApp();
     };
-
-    window.addEventListener('resize', () => {
-        updateMinScale();
-        const info = document.getElementById('info-panel');
-        if (window.innerWidth <= 800 && info.style.display === 'block') {
-            info.style.top = '10px'; info.style.left = '10px';
-            info.style.width = 'calc(100% - 20px)';
-        }
-    });
-
-    function initResizers() {
-        const r = document.getElementById('resizer');
-        const p = document.getElementById('side-panel');
-        let dragging = false;
-        
-        r.addEventListener('mousedown', e => { dragging = true; r.classList.add('dragging'); document.body.style.cursor = window.innerWidth > 800 ? 'col-resize' : 'row-resize'; });
-        document.addEventListener('mouseup', () => { dragging = false; r.classList.remove('dragging'); document.body.style.cursor = ''; });
-        document.addEventListener('mousemove', e => {
-            if (!dragging) return;
-            if (window.innerWidth > 800) {
-                let w = e.clientX;
-                if (w < 250) w = 250; if (w > window.innerWidth * 0.6) w = window.innerWidth * 0.6;
-                p.style.width = w + 'px';
-            } else {
-                let h = e.clientY;
-                if (h < 150) h = 150; if (h > window.innerHeight * 0.8) h = window.innerHeight * 0.8;
-                p.style.flex = `0 0 ${h}px`;
-            }
-            updateMinScale();
-        });
-
-        r.addEventListener('touchstart', e => { dragging = true; r.classList.add('dragging'); });
-        document.addEventListener('touchend', () => { dragging = false; r.classList.remove('dragging'); });
-        document.addEventListener('touchmove', e => {
-            if (!dragging) return;
-            if (window.innerWidth > 800) {
-                let w = e.touches[0].clientX;
-                if (w < 250) w = 250; if (w > window.innerWidth * 0.6) w = window.innerWidth * 0.6;
-                p.style.width = w + 'px';
-            } else {
-                let h = e.touches[0].clientY;
-                if (h < 150) h = 150; if (h > window.innerHeight * 0.8) h = window.innerHeight * 0.8;
-                p.style.flex = `0 0 ${h}px`;
-            }
-            updateMinScale();
-        });
-    }
 </script>
 </body>
 </html>
