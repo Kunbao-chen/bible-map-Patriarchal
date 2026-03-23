@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V9.0</title>
+    <title>亞伯拉罕史地互動地圖 V9.5</title>
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
         :root { --gold: #c5a059; --dark: #2c3e50; --handle-bg: #ddd; }
@@ -27,13 +27,12 @@
         #resizer-inner { height: 10px; background: #eee; cursor: row-resize; display: flex; align-items: center; justify-content: center; border-top: 1px solid #ddd; }
         #list-container { flex: 1; overflow-y: auto; }
         table { width: 100%; border-collapse: collapse; }
-        th { background: #f8f8f8; position: sticky; top: 0; padding: 12px; text-align: left; z-index: 10; border-bottom: 1px solid #ddd; }
+        /* 移除 thead 相關樣式以節省空間 */
         td { padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 14px; }
         tr.active-row td { background: #fffde7; font-weight: bold; border-left: 5px solid var(--gold); }
         .marker { position: absolute; transform: translate(-50%, -50%); padding: 3px 7px; border-radius: 10px; font-size: 11px; font-weight: bold; background: rgba(255,255,255,0.9); border: 1px solid #888; white-space: nowrap; pointer-events: none; visibility: hidden; }
         .marker.highlight { background: var(--gold); color: white; border-color: #fff; z-index: 1000 !important; font-size: 14px; visibility: visible !important; }
         
-        /* 新增：選單樣式 */
         #folder-nav { padding: 10px; background: #eee; border-bottom: 1px solid #ccc; }
         #folder-select { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #999; font-size: 14px; }
     </style>
@@ -84,7 +83,6 @@
         <div id="resizer-inner"></div>
         <div id="list-container">
             <table>
-                <thead><tr><th width="50">序號</th><th>聖經關鍵事件</th></tr></thead>
                 <tbody id="table-body"></tbody>
             </table>
         </div>
@@ -96,12 +94,29 @@
     let currentFolder = '', currentMapIdx = -1, currentEventIdx = -1;
     let locationFrequency = {};
 
-    // 初始化：先抓目錄檔
+    // 修正 4: 雙向模糊比對最優選演算法
+    function findBestMatch(target, db) {
+        let best = null;
+        let minDiff = Infinity;
+        for (const item of db) {
+            if (item.n === target) return item; // 完全符合最優先
+            if (item.n.includes(target) || target.includes(item.n)) {
+                let diff = Math.abs(item.n.length - target.length);
+                if (diff < minDiff) {
+                    minDiff = diff;
+                    best = item;
+                }
+            }
+        }
+        return best;
+    }
+
     async function init() {
         try {
             const res = await fetch(`folder.csv?t=${Date.now()}`);
             const text = await res.text();
-            const folders = parseCSV(text);
+            // 修正 1: 跳過 folder.csv 的第一行標頭
+            const folders = parseCSV(text).slice(1);
             const select = document.getElementById('folder-select');
             select.innerHTML = '<option value="">-- 請選擇史地章節 --</option>';
             folders.forEach(f => {
@@ -114,7 +129,6 @@
         } catch(e) { console.error("無法載入目錄", e); }
     }
 
-    // 切換專案資料夾
     async function loadProject(folder) {
         if (!folder) return;
         currentFolder = folder;
@@ -122,7 +136,6 @@
         locationFrequency = {};
         document.getElementById('table-body').innerHTML = '';
         
-        // 1. 載入該資料夾的 data.csv
         const dRes = await fetch(`${folder}/data.csv?t=${Date.now()}`);
         const dText = await dRes.text();
         const rows = parseCSV(dText);
@@ -130,7 +143,8 @@
         const tbody = document.getElementById('table-body');
         eventData = rows.slice(1).filter(r => r.length > 2).map((r, i) => {
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td>${r[0]}</td><td>${r[2]}</td>`;
+            // 表格內容只保留數據，不帶標頭
+            tr.innerHTML = `<td width="50">${r[0]}</td><td>${r[2]}</td>`;
             tr.onclick = () => { selectEvent(i, tr); tr.scrollIntoView({behavior:'smooth', block:'center'}); };
             tbody.appendChild(tr);
             if (r[3]) r[3].split('→').forEach(n => {
@@ -140,8 +154,7 @@
             return { id:r[0], time:r[1], event:r[2], loc:r[3], script:r[4], note:r[5] };
         });
 
-        // 2. 依序嘗試載入 coords-x.csv (1-10張預設，找不到就停)
-        for (let x = 1; x <= 10; x++) {
+        for (let x = 1; x <= 15; x++) {
             try {
                 const cRes = await fetch(`${folder}/coords-${x}.csv?t=${Date.now()}`);
                 if (!cRes.ok) break;
@@ -152,11 +165,7 @@
             } catch(e) { break; }
         }
         
-        // 預設跳到第一個事件
-        if(eventData.length > 0) {
-            const firstRow = document.getElementById('table-body').rows[0];
-            selectEvent(0, firstRow);
-        }
+        if(eventData.length > 0) selectEvent(0, document.getElementById('table-body').rows[0]);
     }
 
     async function selectEvent(idx, tr) {
@@ -164,17 +173,20 @@
         document.querySelectorAll('tr').forEach(r => r.classList.remove('active-row'));
         tr.classList.add('active-row');
         const item = eventData[idx];
-
-        // 判斷該事件地點出現在哪一張圖 (優先找編號大的圖，符合「大圖包含小圖」邏輯)
-        let targetMapIdx = 1;
         const locNames = item.loc.split('→').map(p => p.replace(/\(.*?\)/g, '').trim());
-        
-        locNames.forEach(name => {
-            const found = allCoords.find(c => c.n === name || name.includes(c.n));
-            if (found && found.mapIdx > targetMapIdx) targetMapIdx = found.mapIdx;
-        });
 
-        // 如果圖檔編號變了，切換底圖
+        // 修正 3: 尋找能包含「所有地點」且 X 最大的地圖
+        let targetMapIdx = 1;
+        const maxAvailableIdx = Math.max(...allCoords.map(c => c.mapIdx));
+
+        for (let x = 1; x <= maxAvailableIdx; x++) {
+            const currentMapDB = allCoords.filter(c => c.mapIdx === x);
+            const allMatch = locNames.every(name => findBestMatch(name, currentMapDB) !== null);
+            if (allMatch) {
+                targetMapIdx = x; // 只要符合全包含，就更新為當前較大的 X
+            }
+        }
+
         if (currentMapIdx !== targetMapIdx) {
             currentMapIdx = targetMapIdx;
             const bgImg = document.getElementById('bg-map');
@@ -182,29 +194,25 @@
             await new Promise(res => { bgImg.onload = () => { syncOverlay(); updateMinScale(); res(); }; });
         }
 
-        const db = allCoords.filter(c => c.mapIdx === targetMapIdx);
-        const actives = locNames.map(name => db.find(c => c.n === name || name.includes(c.n))).filter(p => p);
+        const finalDB = allCoords.filter(c => c.mapIdx === targetMapIdx);
+        const actives = locNames.map(name => findBestMatch(name, finalDB)).filter(p => p);
         
-        renderMarkers(db, actives);
+        renderMarkers(finalDB, actives);
         if (actives.length) flyTo(actives);
         updateInfoPanel(item);
     }
 
-    // --- 以下為核心功能保留與路徑修正 ---
-
     function updateMinScale() {
         const img = document.getElementById('bg-map'), container = document.getElementById('map-section');
         if (!img.offsetWidth || !container.clientWidth) return;
-        const minW = container.clientWidth / img.offsetWidth, minH = container.clientHeight / img.offsetHeight;
-        const absMin = Math.max(minW, minH);
+        const absMin = Math.max(container.clientWidth / img.offsetWidth, container.clientHeight / img.offsetHeight);
         pz.setOptions({ minScale: absMin });
         if (pz.getScale() < absMin) pz.zoom(absMin, { animate: true });
     }
 
     function flyTo(pts) {
         const img = document.getElementById('bg-map'), container = document.getElementById('map-section');
-        let tx = 0, ty = 0;
-        pts.forEach(p => { tx += parseFloat(p.x); ty += parseFloat(p.y); });
+        let tx = 0, ty = 0; pts.forEach(p => { tx += parseFloat(p.x); ty += parseFloat(p.y); });
         const px = (tx / pts.length / 100) * img.offsetWidth, py = (ty / pts.length / 100) * img.offsetHeight;
         const scale = pz.getScale(), ox = img.offsetWidth / 2, oy = img.offsetHeight / 2;
         pz.pan(((container.clientWidth / 2) - ox) / scale - (px - ox), ((container.clientHeight / 2) - oy) / scale - (py - oy), { animate: true });
