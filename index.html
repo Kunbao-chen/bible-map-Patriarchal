@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>聖經地理萬用框架 V9.1</title>
+    <title>聖經地理萬用框架 V9.2</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root { --sidebar-width: 350px; }
@@ -12,9 +12,9 @@
         select, input { width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
         #event-list-container { flex-grow: 1; overflow-y: auto; }
         table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; }
+        td { padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; }
         tr:hover { background: #e9ecef; }
-        tr.active { background: #d1ecf1; font-weight: bold; }
+        tr.active { background: #d1ecf1; font-weight: bold; border-left: 5px solid #007bff; }
         #map-container { flex-grow: 1; position: relative; }
         #map { height: 100%; width: 100%; background: #ddd; }
         #info-panel { position: absolute; bottom: 20px; left: 20px; width: 300px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 15px rgba(0,0,0,0.2); z-index: 1000; display: none; }
@@ -30,7 +30,7 @@
     </div>
     <div id="event-list-container">
         <table id="event-table">
-            <thead><tr><th>事件清單</th></tr></thead>
+            <thead><tr><th style="padding:10px; text-align:left; background:#eee;">事件清單</th></tr></thead>
             <tbody id="event-body"></tbody>
         </table>
     </div>
@@ -60,20 +60,15 @@
     let allCoords = {};
     let currentImageOverlay = null;
 
-    // 初始化地圖與資料夾清單
     async function init() {
         map = L.map('map', { crs: L.CRS.Simple, minZoom: -2 });
-        map.setView([500, 500], -1); // 給個初始視角避免灰屏
+        map.setView([500, 500], -1);
 
         try {
             const response = await fetch('folder.csv');
-            if (!response.ok) throw new Error("找不到 folder.csv");
             const csvText = await response.text();
-            
-            // 解析資料夾清單 (去除空白行與 BOM)
             const folders = Papa.parse(csvText, { 
-                header: true, 
-                skipEmptyLines: 'greedy',
+                header: true, skipEmptyLines: 'greedy',
                 transformHeader: h => h.trim().replace(/^\ufeff/, '') 
             }).data.filter(f => f.folder_name);
 
@@ -92,80 +87,85 @@
             }
             
             loadFolder(select.value);
-
             select.onchange = (e) => {
                 localStorage.setItem('lastBibleFolder', e.target.value);
                 loadFolder(e.target.value);
             };
-
             document.getElementById('search-input').oninput = handleSearch;
-        } catch (e) { console.error("初始化錯誤:", e); }
+        } catch (e) { console.error("初始化失敗:", e); }
     }
 
-    // 讀取子資料夾資料
     async function loadFolder(folder) {
         if (!folder) return;
         currentFolder = folder;
-        console.log(`正在載入資料夾: ${folder}`);
+        console.log("開始載入資料夾:", folder);
 
-        if (currentImageOverlay) map.removeLayer(currentImageOverlay);
+        // 重置狀態
         masterData = [];
         allCoords = {};
         currentIndex = -1;
-        document.getElementById('info-panel').style.display = 'none';
+        document.getElementById('event-body').innerHTML = '<tr><td>載入中...</td></tr>';
 
         try {
+            // 1. 載入主要事件 data.csv
             const res = await fetch(`${folder}/data.csv`);
-            if (!res.ok) throw new Error(`讀取 ${folder}/data.csv 失敗`);
             const text = await res.text();
-            
             const results = Papa.parse(text, { 
-                header: true, 
-                skipEmptyLines: 'greedy',
+                header: true, skipEmptyLines: 'greedy',
                 transformHeader: h => h.trim().replace(/^\ufeff/, '') 
             });
 
-            // 智能找尋標題欄位（不分大小寫，對應 Title, Location, Description）
             const keys = Object.keys(results.data[0] || {});
             const tKey = keys.find(k => k.toLowerCase() === 'title');
             const lKey = keys.find(k => k.toLowerCase() === 'location');
             const dKey = keys.find(k => k.toLowerCase() === 'description');
 
-            // 標準化資料結構
             masterData = results.data.map(d => ({
-                Title: d[tKey] || "",
+                Title: d[tKey] || "未命名事件",
                 Location: d[lKey] || "",
                 Description: d[dKey] || ""
-            })).filter(d => d.Title);
+            })).filter(d => d.Title && d.Title !== "未命名事件");
 
             filteredData = [...masterData];
+            renderTable(); // 先渲染表格，保證清單出現
 
-            // 讀取座標檔
+            // 2. 異步載入座標檔，不影響清單顯示
             for (let i = 1; i <= 5; i++) {
-                const cRes = await fetch(`${folder}/coords_${i}.csv`);
-                if (cRes.ok) {
-                    const cText = await cRes.text();
-                    const cData = Papa.parse(cText, { 
-                        header: true, 
-                        skipEmptyLines: 'greedy',
-                        transformHeader: h => h.trim().replace(/^\ufeff/, '')
-                    }).data;
-                    // 精準比對：按名字長度由長到短排序
-                    allCoords[i] = cData.sort((a, b) => b.Location.length - a.Location.length);
-                }
+                fetch(`${folder}/coords_${i}.csv`).then(async (cRes) => {
+                    if (cRes.ok) {
+                        const cText = await cRes.text();
+                        let cData = Papa.parse(cText, { 
+                            header: true, skipEmptyLines: 'greedy',
+                            transformHeader: h => h.trim().replace(/^\ufeff/, '')
+                        }).data;
+                        
+                        // 找到 Location 欄位的實際名稱
+                        const cKeys = Object.keys(cData[0] || {});
+                        const locKey = cKeys.find(k => k.toLowerCase() === 'location');
+
+                        if (locKey) {
+                            allCoords[i] = cData
+                                .filter(row => row[locKey]) // 確保該列有地名
+                                .sort((a, b) => (b[locKey].length || 0) - (a[locKey].length || 0));
+                            console.log(`座標檔 coords_${i}.csv 載入成功`);
+                        }
+                    }
+                }).catch(err => console.log(`跳過 coords_${i}.csv`));
             }
-            
-            renderTable();
-            console.log("資料載入成功，總筆數:", masterData.length);
+
         } catch (e) { 
             console.error(e);
-            alert("載入失敗，請確認檔案路徑與名稱大小寫是否正確！");
+            document.getElementById('event-body').innerHTML = '<tr><td style="color:red;">載入失敗，請檢查 data.csv</td></tr>';
         }
     }
 
     function renderTable() {
         const body = document.getElementById('event-body');
         body.innerHTML = '';
+        if (filteredData.length === 0) {
+            body.innerHTML = '<tr><td>找不到相關事件</td></tr>';
+            return;
+        }
         filteredData.forEach((item, index) => {
             const tr = document.createElement('tr');
             tr.innerHTML = `<td>${item.Title}</td>`;
@@ -187,7 +187,6 @@
     }
 
     function selectEvent(index) {
-        if (index < 0 || index >= filteredData.length) return;
         currentIndex = index;
         const item = filteredData[index];
         renderTable();
@@ -195,15 +194,18 @@
         document.getElementById('info-title').textContent = item.Title;
         document.getElementById('info-content').textContent = item.Description;
 
-        // 地圖切換邏輯
+        // 尋找包含最多地點的地圖
         let bestMapId = 1;
         let maxMatches = -1;
-        const targetLocations = item.Location.split(/[,，、]/).map(l => l.trim());
+        const targetLocations = item.Location.split(/[,，、]/).map(l => l.trim()).filter(l => l);
 
         Object.keys(allCoords).forEach(id => {
             let matches = 0;
+            const cKeys = Object.keys(allCoords[id][0] || {});
+            const locKey = cKeys.find(k => k.toLowerCase() === 'location');
+            
             targetLocations.forEach(loc => {
-                if (allCoords[id].find(c => loc.includes(c.Location))) matches++;
+                if (allCoords[id].find(c => loc.includes(c[locKey]))) matches++;
             });
             if (matches > maxMatches) { maxMatches = matches; bestMapId = id; }
         });
@@ -232,10 +234,16 @@
             
             let points = [];
             targetLocations.forEach(loc => {
-                const coord = allCoords[mapId]?.find(c => loc.includes(c.Location));
+                const id = mapId;
+                const cKeys = Object.keys(allCoords[id]?.[0] || {});
+                const locKey = cKeys.find(k => k.toLowerCase() === 'location');
+                const coord = allCoords[id]?.find(c => loc.includes(c[locKey]));
+                
                 if (coord) {
-                    const pos = [parseFloat(coord.Y), parseFloat(coord.X)];
-                    L.marker(pos).addTo(map).bindTooltip(coord.Location, {permanent: true});
+                    const xKey = Object.keys(coord).find(k => k.toLowerCase() === 'x');
+                    const yKey = Object.keys(coord).find(k => k.toLowerCase() === 'y');
+                    const pos = [parseFloat(coord[yKey]), parseFloat(coord[xKey])];
+                    L.marker(pos).addTo(map).bindTooltip(coord[locKey], {permanent: true});
                     points.push(pos);
                 }
             });
