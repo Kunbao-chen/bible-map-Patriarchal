@@ -2,191 +2,423 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>聖經地理 V8.2 - 路徑修正版</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>亞伯拉罕史地互動地圖 V8.3 - 路徑與搜尋進化版</title>
+    <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
-        body { margin: 0; display: flex; height: 100vh; font-family: "Microsoft JhengHei", sans-serif; }
-        #sidebar { width: 380px; display: flex; flex-direction: column; border-right: 1px solid #ccc; }
-        #controls { padding: 15px; background: #eee; }
-        #event-list { flex-grow: 1; overflow-y: auto; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; cursor: pointer; }
-        tr:hover { background-color: #f5f5f5; }
-        tr.active { background-color: #d1ecf1; }
-        #map-container { flex-grow: 1; position: relative; }
-        #map { height: 100%; }
-        /* 恢復可拖動面板樣式 */
-        #info-panel {
-            position: absolute; top: 50px; left: 50px; width: 300px;
-            background: white; border: 2px solid #333; border-radius: 8px;
-            z-index: 1000; cursor: move; box-shadow: 3px 3px 10px rgba(0,0,0,0.3);
+        :root { --gold: #c5a059; --dark: #2c3e50; --handle-bg: #ddd; }
+        * { box-sizing: border-box; font-family: "微軟正黑體", sans-serif; -webkit-tap-highlight-color: transparent; }
+        
+        body { margin: 0; padding: 0; width: 100vw; height: 100dvh; overflow: hidden; background: #000; }
+        #app-container { display: flex; width: 100%; height: 100%; flex-direction: row; }
+        
+        @media (max-width: 800px) and (orientation: portrait) { 
+            #app-container { flex-direction: column; } 
+            #side-panel { width: 100% !important; flex: 0 0 50dvh; }
         }
-        #info-header { padding: 10px; background: #333; color: white; display: flex; justify-content: space-between; border-radius: 5px 5px 0 0; }
-        #info-body { padding: 15px; max-height: 400px; overflow-y: auto; }
-        .reset-btn { position: absolute; top: 10px; right: 10px; z-index: 1000; padding: 8px 12px; background: white; border: 1px solid #ccc; cursor: pointer; }
+
+        #side-panel { width: 400px; background: #fff; display: flex; flex-direction: column; z-index: 10; box-shadow: 2px 0 10px rgba(0,0,0,0.1); }
+        
+        /* 新增：控制區 (下拉選單與搜尋框) */
+        #controls-area { padding: 15px; border-bottom: 2px solid var(--gold); background: #fdfdfd; display: flex; flex-direction: column; gap: 10px; }
+        #folder-select, #search-input { width: 100%; padding: 8px; font-size: 15px; border: 1px solid #ccc; border-radius: 4px; }
+        #folder-select:focus, #search-input:focus { outline: none; border-color: var(--gold); }
+
+        #table-container { flex-grow: 1; overflow-y: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: var(--dark); color: var(--gold); position: sticky; top: 0; padding: 12px; font-weight: 500; text-align: left; }
+        td { padding: 12px; border-bottom: 1px solid #eee; font-size: 0.95rem; cursor: pointer; transition: 0.2s; }
+        tr:hover td { background: #f9f9f9; }
+        tr.active td { background: rgba(197, 160, 89, 0.15); border-left: 4px solid var(--gold); font-weight: bold; }
+
+        #resizer { width: 12px; background: var(--handle-bg); cursor: col-resize; display: flex; align-items: center; justify-content: center; z-index: 11; transition: background 0.2s; }
+        #resizer:hover, #resizer.dragging { background: var(--gold); }
+        #resizer::after { content: "⋮"; color: #666; font-size: 20px; }
+        
+        @media (max-width: 800px) and (orientation: portrait) {
+            #resizer { width: 100%; height: 12px; cursor: row-resize; flex-direction: column; }
+            #resizer::after { content: "⋯"; }
+        }
+
+        #map-section { flex-grow: 1; position: relative; overflow: hidden; background: #111; display: flex; justify-content: center; align-items: center; }
+        #panzoom-element { position: relative; transform-origin: 0 0; }
+        #base-map { display: block; max-width: none; pointer-events: none; }
+        #overlay-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+        
+        #controls { position: absolute; bottom: 20px; right: 20px; display: flex; gap: 10px; z-index: 100; }
+        .btn { width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,0.9); border: none; font-size: 20px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; color: var(--dark); }
+        .btn:hover { background: #fff; transform: scale(1.05); }
+
+        #info-panel { position: absolute; top: 20px; left: 20px; width: 320px; background: rgba(255,255,255,0.95); border-radius: 8px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); z-index: 100; display: none; backdrop-filter: blur(5px); border: 1px solid rgba(197, 160, 89, 0.3); }
+        #info-title { margin: 0 0 10px 0; color: var(--dark); font-size: 1.2rem; line-height: 1.4; border-bottom: 2px solid var(--gold); padding-bottom: 8px; }
+        #info-body { font-size: 0.95rem; line-height: 1.6; color: #333; max-height: 40vh; overflow-y: auto; }
+        #close-info { position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 20px; cursor: pointer; color: #999; }
+        
+        .nav-btns { display: flex; gap: 10px; margin-top: 15px; }
+        .nav-btn { flex: 1; padding: 8px; border: 1px solid var(--gold); background: #fff; color: var(--gold); border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .nav-btn:hover { background: var(--gold); color: #fff; }
     </style>
 </head>
 <body>
 
-<div id="sidebar">
-    <div id="controls">
-        <select id="folder-select" style="width:100%; margin-bottom:10px;"></select>
-        <input type="text" id="search" placeholder="搜尋事件或地點..." style="width:100%; padding:5px;">
+<div id="app-container">
+    <div id="side-panel">
+        <div id="controls-area">
+            <select id="folder-select"><option value="">載入中...</option></select>
+            <input type="text" id="search-input" placeholder="🔍 搜尋事件、地點或內容...">
+        </div>
+        <div id="table-container">
+            <table>
+                <thead><tr><th width="15%">序</th><th>事件內容</th></tr></thead>
+                <tbody id="table-body"></tbody>
+            </table>
+        </div>
     </div>
-    <div id="event-list">
-        <table>
-            <thead><tr><th>序號</th><th>關鍵事件內容</th></tr></thead>
-            <tbody id="event-table-body"></tbody>
-        </table>
+    
+    <div id="resizer"></div>
+    
+    <div id="map-section">
+        <div id="panzoom-element">
+            <img id="base-map" src="" alt="地圖載入中...">
+            <svg id="overlay-svg"></svg>
+        </div>
+        
+        <div id="info-panel">
+            <button id="close-info" onclick="document.getElementById('info-panel').style.display='none'">×</button>
+            <h3 id="info-title"></h3>
+            <div id="info-body"></div>
+            <div class="nav-btns">
+                <button class="nav-btn" onclick="navEvent(-1)">◀ 上一個</button>
+                <button class="nav-btn" onclick="navEvent(1)">下一個 ▶</button>
+            </div>
+        </div>
+
+        <div id="controls">
+            <button class="btn" onclick="pz.zoomIn()">＋</button>
+            <button class="btn" onclick="pz.zoomOut()">－</button>
+            <button class="btn" onclick="resetView()">↺</button>
+        </div>
     </div>
 </div>
-
-<div id="map-container">
-    <button class="reset-btn" onclick="resetView()">還原視角</button>
-    <div id="map"></div>
-    <div id="info-panel">
-        <div id="info-header"><span id="info-title">點擊事件查看詳情</span><span onclick="this.parentElement.parentElement.style.display='none'" style="cursor:pointer">✖</span></div>
-        <div id="info-body"></div>
-    </div>
-</div>
-
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
 
 <script>
-    let map, imageOverlay;
-    let masterData = [];
-    let currentCoords = {};
-    let currentFolder = "";
+    let pz;
+    let eventData = [];
+    let filteredEventData = []; // 新增：用於儲存搜尋過濾後的資料
+    let coordData = [];
+    let currentEventIdx = -1;
+    let minScale = 0.1;
 
-    // 1. 初始化地圖與資料夾
-    async function init() {
-        map = L.map('map', { crs: L.CRS.Simple, minZoom: -2 });
-        
-        // 讀取 folder.csv
-        const fRes = await fetch('folder.csv');
-        const fText = await fRes.text();
-        const folders = Papa.parse(fText.trim(), { header: true }).data;
-        
-        const select = document.getElementById('folder-select');
-        folders.forEach(f => {
-            let opt = document.createElement('option');
-            opt.value = f.folder_name;
-            opt.textContent = f.display_name;
-            select.appendChild(opt);
-        });
-
-        select.onchange = () => loadData(select.value);
-        loadData(select.value); // 初始載入第一個
-        makeDraggable(document.getElementById("info-panel"));
-    }
-
-    // 2. 載入指定資料夾的內容
-    async function loadData(folder) {
-        currentFolder = folder;
-        // 清除舊地圖與標記
-        if (imageOverlay) map.removeLayer(imageOverlay);
-        clearMarkers();
-
-        // 載入事件資料
-        const res = await fetch(`${folder}/data.csv`);
-        const text = await res.text();
-        masterData = Papa.parse(text.trim(), { header: true }).data;
-
-        // 預載座標 (這裡假設您依然使用 coords_1.csv 對應 picture_1.png)
-        // 為了 8.2 的簡潔，我們在切換事件時才去讀取對應的座標檔
-        renderTable(masterData);
-    }
-
-    function renderTable(data) {
-        const tbody = document.getElementById('event-table-body');
-        tbody.innerHTML = '';
-        data.forEach((row, index) => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `<td>${row['序號']}</td><td>${row['關鍵事件內容']}</td>`;
-            tr.onclick = () => selectEvent(row);
-            tbody.appendChild(tr);
-        });
-    }
-
-    async function selectEvent(row) {
-        // 更新資訊面板
-        document.getElementById('info-panel').style.display = 'block';
-        document.getElementById('info-title').innerText = `序號 ${row['序號']}`;
-        document.getElementById('info-body').innerHTML = `<b>地點：</b>${row['地點 (距離)']}<br><br>${row['備註 (關聯、釋義、補充)']}`;
-
-        // 決定載入哪張地圖 (簡單判斷：優先看有沒有對應的圖，預設用 1)
-        // 您可以根據需要在此處加入更複雜的地圖切換邏輯
-        showMap(1, row['地點 (距離)']);
-    }
-
-    async function showMap(mapId, locationStr) {
-        const imgPath = `${currentFolder}/picture_${mapId}.png`;
-        const coordPath = `${currentFolder}/coords_${mapId}.csv`;
-
-        const img = new Image();
-        img.onload = async function() {
-            const bounds = [[0, 0], [img.height, img.width]];
-            if (imageOverlay) map.removeLayer(imageOverlay);
-            imageOverlay = L.imageOverlay(imgPath, bounds).addTo(map);
+    // 新增：初始化應用程式，讀取 folder.csv
+    async function initApp() {
+        try {
+            const fRes = await fetch('folder.csv');
+            const fText = await fRes.text();
+            const folders = parseCSV(fText, true).filter(f => f.folder_name);
             
-            // 讀取座標並標註
-            const cRes = await fetch(coordPath);
-            const cText = await cRes.text();
-            const coords = Papa.parse(cText.trim(), { header: true }).data;
-            
-            clearMarkers();
-            
-            // 找出 CSV 裡匹配的地點
-            let targetPoint = null;
-            coords.forEach(c => {
-                if (locationStr.includes(c['地名'])) {
-                    const x = parseFloat(c['百分比X']);
-                    const y = parseFloat(c['百分比Y']);
-                    const marker = L.marker([y, x]).addTo(map).bindTooltip(c['地名'], {permanent: true});
-                    targetPoint = [y, x];
-                }
+            const select = document.getElementById('folder-select');
+            select.innerHTML = '';
+            folders.forEach(f => {
+                const opt = document.createElement('option');
+                opt.value = f.folder_name.trim();
+                opt.textContent = f.display_name || f.folder_name;
+                select.appendChild(opt);
             });
 
-            // 如果有找到點，則平移過去，但「不改變縮放倍率」
-            if (targetPoint) {
-                map.panTo(targetPoint); 
-            } else {
-                map.fitBounds(bounds);
-            }
-        };
-        img.src = imgPath;
+            select.onchange = (e) => loadData(e.target.value);
+            
+            // 搜尋監聽器
+            document.getElementById('search-input').addEventListener('input', (e) => {
+                renderTable(e.target.value);
+            });
+
+            if (folders.length > 0) loadData(folders[0].folder_name.trim());
+        } catch (e) {
+            console.error("載入 folder.csv 失敗", e);
+            document.getElementById('table-body').innerHTML = '<tr><td colspan="2">初始化失敗，請檢查 folder.csv</td></tr>';
+        }
     }
 
-    function resetView() {
-        if (imageOverlay) map.fitBounds(imageOverlay.getBounds());
+    // 修改：根據選擇的資料夾讀取檔案
+    async function loadData(folder) {
+        document.getElementById('table-body').innerHTML = '<tr><td colspan="2" style="text-align:center;">資料載入中...</td></tr>';
+        document.getElementById('overlay-svg').innerHTML = ''; // 清空標註
+        document.getElementById('info-panel').style.display = 'none';
+        
+        try {
+            const r1 = await fetch(`${folder}/data.csv`);
+            const t1 = await r1.text();
+            eventData = parseCSV(t1, true);
+
+            // 修改：從舊版的 創世記真實經緯度表.csv 改為讀取對應資料夾的 coords_1.csv
+            const r2 = await fetch(`${folder}/coords_1.csv`);
+            const t2 = await r2.text();
+            coordData = parseCSV(t2, true);
+
+            // 修改：切換地圖圖片
+            const img = document.getElementById('base-map');
+            img.onload = () => {
+                syncOverlay();
+                updateMinScale();
+                resetView();
+            };
+            img.src = `${folder}/picture_1.png`;
+
+            renderTable(); // 初始不帶搜尋字串，顯示全部
+        } catch (e) {
+            console.error("讀取資料失敗", e);
+            document.getElementById('table-body').innerHTML = '<tr><td colspan="2" style="color:red; text-align:center;">讀取資料失敗，請確認檔案結構</td></tr>';
+        }
     }
 
-    function clearMarkers() {
-        map.eachLayer(layer => {
-            if (layer instanceof L.Marker) map.removeLayer(layer);
+    // 修改：加入搜尋過濾邏輯
+    function renderTable(searchTerm = '') {
+        const tb = document.getElementById('table-body');
+        tb.innerHTML = '';
+        const term = searchTerm.toLowerCase();
+
+        filteredEventData = eventData.filter(row => {
+            if (!term) return true;
+            return (row['關鍵事件內容'] || '').toLowerCase().includes(term) ||
+                   (row['地點 (距離)'] || '').toLowerCase().includes(term) ||
+                   (row['備註 (關聯、釋義、補充)'] || '').toLowerCase().includes(term);
+        });
+
+        if (filteredEventData.length === 0) {
+            tb.innerHTML = '<tr><td colspan="2" style="text-align:center;">找不到符合的事件</td></tr>';
+            return;
+        }
+
+        filteredEventData.forEach((row, i) => {
+            if (!row['關鍵事件內容']) return;
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${row['序號'] || i+1}</td><td>${row['關鍵事件內容']}</td>`;
+            // 注意這裡傳入的 index (i) 是 filteredEventData 裡的索引
+            tr.onclick = () => selectEvent(i, tr);
+            tb.appendChild(tr);
         });
     }
 
-    // 恢復可拖動邏輯
-    function makeDraggable(el) {
-        let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-        const header = document.getElementById("info-header");
-        header.onmousedown = (e) => {
-            e.preventDefault();
-            pos3 = e.clientX; pos4 = e.clientY;
-            document.onmouseup = () => { document.onmouseup = null; document.onmousemove = null; };
-            document.onmousemove = (e) => {
-                e.preventDefault();
-                pos1 = pos3 - e.clientX; pos2 = pos4 - e.clientY;
-                pos3 = e.clientX; pos4 = e.clientY;
-                el.style.top = (el.offsetTop - pos2) + "px";
-                el.style.left = (el.offsetLeft - pos1) + "px";
-            };
-        };
+    // 修改：改用 filteredEventData 取得選擇的事件，並移除自動縮放
+    function selectEvent(idx, trRow) {
+        currentEventIdx = idx;
+        const row = filteredEventData[idx];
+        
+        document.querySelectorAll('#table-body tr').forEach(tr => tr.classList.remove('active'));
+        if (trRow) trRow.classList.add('active');
+
+        const info = document.getElementById('info-panel');
+        info.style.display = 'block';
+        document.getElementById('info-title').textContent = `${row['序號'] ? row['序號']+'. ' : ''}${row['關鍵事件內容']}`;
+        
+        let bodyHtml = '';
+        if (row['時間資訊 (族長年齡依序並列)']) bodyHtml += `<p style="color:#666; margin:0 0 10px;">🕒 ${row['時間資訊 (族長年齡依序並列)']}</p>`;
+        bodyHtml += `<b>📍 地點：</b>${row['地點 (距離)']}<br><br>`;
+        bodyHtml += `<b>📖 經文：</b>${row['引用經文']}<br><br>`;
+        if (row['備註 (關聯、釋義、補充)']) bodyHtml += `<b>💡 備註：</b>${row['備註 (關聯、釋義、補充)']}`;
+        document.getElementById('info-body').innerHTML = bodyHtml;
+
+        const locs = parseLocations(row['地點 (距離)']);
+        let pts = [];
+        locs.forEach(loc => {
+            const c = coordData.find(x => loc.includes(x['地名']));
+            if(c) pts.push(c);
+        });
+
+        const svg = document.getElementById('overlay-svg');
+        svg.innerHTML = '';
+        
+        if (pts.length > 0) {
+            let sumX = 0, sumY = 0;
+            const img = document.getElementById('base-map');
+            const w = img.naturalWidth, h = img.naturalHeight;
+
+            if(pts.length > 1) {
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                let d = `M ${parseFloat(pts[0]['百分比X'])/100*w} ${parseFloat(pts[0]['百分比Y'])/100*h}`;
+                for(let i=1; i<pts.length; i++) {
+                    d += ` L ${parseFloat(pts[i]['百分比X'])/100*w} ${parseFloat(pts[i]['百分比Y'])/100*h}`;
+                }
+                path.setAttribute('d', d);
+                path.setAttribute('stroke', 'var(--gold)');
+                path.setAttribute('stroke-width', '3');
+                path.setAttribute('stroke-dasharray', '5,5');
+                path.setAttribute('fill', 'none');
+                svg.appendChild(path);
+            }
+
+            pts.forEach(p => {
+                const px = parseFloat(p['百分比X'])/100 * w;
+                const py = parseFloat(p['百分比Y'])/100 * h;
+                sumX += px; sumY += py;
+
+                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', px); circle.setAttribute('cy', py);
+                circle.setAttribute('r', '6');
+                circle.setAttribute('fill', 'red');
+                circle.setAttribute('stroke', 'white');
+                circle.setAttribute('stroke-width', '2');
+                
+                const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', px + 10); text.setAttribute('y', py + 5);
+                text.setAttribute('fill', 'white');
+                text.setAttribute('font-size', '16px');
+                text.setAttribute('font-weight', 'bold');
+                text.textContent = p['地名'];
+                
+                g.appendChild(bg); g.appendChild(text); g.appendChild(circle);
+                svg.appendChild(g);
+
+                const bbox = text.getBBox();
+                bg.setAttribute('x', bbox.x - 2); bg.setAttribute('y', bbox.y - 2);
+                bg.setAttribute('width', bbox.width + 4); bg.setAttribute('height', bbox.height + 4);
+                bg.setAttribute('fill', 'rgba(0,0,0,0.6)');
+                bg.setAttribute('rx', '4');
+            });
+
+            // 修正：計算中心點並只進行 Pan (平移)，移除自動 Zoom
+            const cx = sumX / pts.length;
+            const cy = sumY / pts.length;
+            const container = document.getElementById('map-section');
+            const viewW = container.clientWidth, viewH = container.clientHeight;
+            
+            // 這裡不再呼叫 pz.zoom(4)
+            const currentScale = pz.getScale(); 
+            const tx = (viewW / 2) - (cx * currentScale);
+            const ty = (viewH / 2) - (cy * currentScale);
+            pz.pan(tx, ty, {animate:true});
+        }
     }
 
-    init();
+    // 輔助函式 (完全保留 8.3 邏輯)
+    function parseLocations(str) {
+        if (!str) return [];
+        return str.replace(/\([^)]*\)/g, '').split(/→|,|，|、/).map(s => s.trim()).filter(s => s);
+    }
+
+    function parseCSV(text, hasHeader) {
+        let rows = [], row = [], cell = '', q = false;
+        for (let i = 0; i < text.length; i++) {
+            let c = text[i], n = text[i+1];
+            if (c === '"' && q && n === '"') { cell += '"'; i++; }
+            else if (c === '"') q = !q;
+            else if (c === ',' && !q) { row.push(cell.trim()); cell = ''; }
+            else if ((c === '\n' || c === '\r') && !q) {
+                if (row.length > 0 || cell) { row.push(cell.trim()); rows.push(row); }
+                row = []; cell = ''; if (c === '\r' && n === '\n') i++;
+            } else cell += c;
+        }
+        if (row.length > 0 || cell) { row.push(cell.trim()); rows.push(row); }
+        
+        if (hasHeader && rows.length > 0) {
+            const h = rows.shift().map(x => x.replace(/^\ufeff/, ''));
+            return rows.map(r => {
+                let obj = {};
+                h.forEach((k, i) => obj[k] = r[i]);
+                return obj;
+            });
+        }
+        return rows;
+    }
+
+    function navEvent(step) {
+        const n = currentEventIdx + step;
+        if (n >= 0 && n < filteredEventData.length) {
+            const rows = document.getElementById('table-body').rows;
+            selectEvent(n, rows[n]);
+            rows[n].scrollIntoView({behavior:'smooth', block:'center'});
+        }
+    }
+
+    function syncOverlay() {
+        const img = document.getElementById('base-map');
+        const svg = document.getElementById('overlay-svg');
+        svg.setAttribute('viewBox', `0 0 ${img.naturalWidth} ${img.naturalHeight}`);
+    }
+
+    function updateMinScale() {
+        const img = document.getElementById('base-map');
+        const container = document.getElementById('map-section');
+        if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+            const scaleX = container.clientWidth / img.naturalWidth;
+            const scaleY = container.clientHeight / img.naturalHeight;
+            minScale = Math.min(scaleX, scaleY) * 0.9;
+            pz.setOptions({ minScale: minScale });
+            if (pz.getScale() < minScale) pz.zoom(minScale);
+        }
+    }
+
+    function resetView() { 
+        pz.zoom(minScale);
+        setTimeout(() => { pz.pan(0, 0); }, 50); // 確保歸零
+    }
+
+    window.onload = () => {
+        pz = Panzoom(document.getElementById('panzoom-element'), { 
+            maxScale: 8, 
+            contain: 'outside' 
+        });
+        document.getElementById('map-section').addEventListener('wheel', pz.zoomWithWheel);
+        
+        initApp(); // 改為呼叫新版的初始化函式
+        initResizers();
+        
+        setTimeout(() => {
+            syncOverlay();
+            updateMinScale();
+        }, 150);
+    };
+
+    window.addEventListener('resize', () => {
+        updateMinScale();
+        const info = document.getElementById('info-panel');
+        if (window.innerWidth <= 800 && info.style.display === 'block') {
+            info.style.top = '10px'; info.style.left = '10px';
+            info.style.width = 'calc(100% - 20px)';
+        }
+    });
+
+    function initResizers() {
+        const r = document.getElementById('resizer');
+        const p = document.getElementById('side-panel');
+        let dragging = false;
+        
+        r.addEventListener('mousedown', e => { dragging = true; r.classList.add('dragging'); document.body.style.cursor = window.innerWidth > 800 ? 'col-resize' : 'row-resize'; });
+        document.addEventListener('mouseup', () => { dragging = false; r.classList.remove('dragging'); document.body.style.cursor = ''; });
+        document.addEventListener('mousemove', e => {
+            if (!dragging) return;
+            if (window.innerWidth > 800) {
+                let w = e.clientX;
+                if (w < 250) w = 250; if (w > window.innerWidth * 0.6) w = window.innerWidth * 0.6;
+                p.style.width = w + 'px';
+            } else {
+                let h = e.clientY;
+                if (h < 150) h = 150; if (h > window.innerHeight * 0.8) h = window.innerHeight * 0.8;
+                p.style.flex = `0 0 ${h}px`;
+            }
+            updateMinScale();
+        });
+
+        // 觸控支援
+        r.addEventListener('touchstart', e => { dragging = true; r.classList.add('dragging'); });
+        document.addEventListener('touchend', () => { dragging = false; r.classList.remove('dragging'); });
+        document.addEventListener('touchmove', e => {
+            if (!dragging) return;
+            if (window.innerWidth > 800) {
+                let w = e.touches[0].clientX;
+                if (w < 250) w = 250; if (w > window.innerWidth * 0.6) w = window.innerWidth * 0.6;
+                p.style.width = w + 'px';
+            } else {
+                let h = e.touches[0].clientY;
+                if (h < 150) h = 150; if (h > window.innerHeight * 0.8) h = window.innerHeight * 0.8;
+                p.style.flex = `0 0 ${h}px`;
+            }
+            updateMinScale();
+        });
+    }
 </script>
 </body>
 </html>
