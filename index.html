@@ -2,85 +2,35 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>聖經地理萬用互動地圖 V9.0</title>
+    <title>聖經地理萬用框架 V9.1</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        :root {
-            --sidebar-width: 350px;
-            --primary-color: #2c3e50;
-        }
-        body { margin: 0; display: flex; height: 100vh; font-family: -apple-system, sans-serif; }
-        
-        /* 側邊欄樣式 */
-        #sidebar {
-            width: var(--sidebar-width);
-            display: flex;
-            flex-direction: column;
-            border-right: 1px solid #ccc;
-            background: #f8f9fa;
-        }
-
-        /* 控制區：下拉選單與搜尋 */
-        #controls {
-            padding: 15px;
-            background: white;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            z-index: 10;
-        }
-        select, input {
-            width: 100%;
-            padding: 8px;
-            margin-bottom: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            box-sizing: border-box;
-        }
-
-        /* 事件列表 */
-        #event-list-container {
-            flex-grow: 1;
-            overflow-y: auto;
-        }
+        :root { --sidebar-width: 350px; }
+        body { margin: 0; display: flex; height: 100vh; font-family: sans-serif; }
+        #sidebar { width: var(--sidebar-width); display: flex; flex-direction: column; border-right: 1px solid #ccc; background: #f8f9fa; }
+        #controls { padding: 15px; background: white; box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 10; }
+        select, input { width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        #event-list-container { flex-grow: 1; overflow-y: auto; }
         table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 10px; border-bottom: 1px solid #eee; text-align: left; cursor: pointer; }
+        th, td { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; }
         tr:hover { background: #e9ecef; }
         tr.active { background: #d1ecf1; font-weight: bold; }
-
-        /* 地圖區域 */
         #map-container { flex-grow: 1; position: relative; }
-        #map { height: 100%; width: 100%; background: #eee; }
-
-        /* 資訊浮窗 */
-        #info-panel {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            width: 300px;
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 15px rgba(0,0,0,0.2);
-            z-index: 1000;
-            display: none;
-        }
+        #map { height: 100%; width: 100%; background: #ddd; }
+        #info-panel { position: absolute; bottom: 20px; left: 20px; width: 300px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 15px rgba(0,0,0,0.2); z-index: 1000; display: none; }
         .nav-btns { display: flex; justify-content: space-between; margin-top: 10px; }
-        button { padding: 5px 15px; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div id="sidebar">
     <div id="controls">
-        <select id="folder-select">
-            <option value="">載入中...</option>
-        </select>
-        <input type="text" id="search-input" placeholder="🔍 搜尋事件或地點...">
+        <select id="folder-select"><option value="">載入中...</option></select>
+        <input type="text" id="search-input" placeholder="🔍 搜尋事件、地點或經文...">
     </div>
     <div id="event-list-container">
         <table id="event-table">
-            <thead>
-                <tr><th>事件清單</th></tr>
-            </thead>
+            <thead><tr><th>事件清單</th></tr></thead>
             <tbody id="event-body"></tbody>
         </table>
     </div>
@@ -104,33 +54,40 @@
 <script>
     let map;
     let currentFolder = "";
-    let masterData = [];    // 原始所有事件
-    let filteredData = [];  // 搜尋後的事件
+    let masterData = [];
+    let filteredData = [];
     let currentIndex = -1;
-    let allCoords = {};     // 儲存所有 coords_x.csv 的內容
+    let allCoords = {};
     let currentImageOverlay = null;
 
-    // 1. 初始化：讀取索引並恢復記憶
+    // 初始化地圖與資料夾清單
     async function init() {
         map = L.map('map', { crs: L.CRS.Simple, minZoom: -2 });
-        
+        map.setView([500, 500], -1); // 給個初始視角避免灰屏
+
         try {
             const response = await fetch('folder.csv');
+            if (!response.ok) throw new Error("找不到 folder.csv");
             const csvText = await response.text();
-            const folders = Papa.parse(csvText, { header: true }).data.filter(f => f.folder_name);
             
+            // 解析資料夾清單 (去除空白行與 BOM)
+            const folders = Papa.parse(csvText, { 
+                header: true, 
+                skipEmptyLines: 'greedy',
+                transformHeader: h => h.trim().replace(/^\ufeff/, '') 
+            }).data.filter(f => f.folder_name);
+
             const select = document.getElementById('folder-select');
             select.innerHTML = '';
             folders.forEach(f => {
                 const opt = document.createElement('option');
-                opt.value = f.folder_name;
+                opt.value = f.folder_name.trim();
                 opt.textContent = f.display_name || f.folder_name;
                 select.appendChild(opt);
             });
 
-            // 記憶功能：檢查 localStorage
             const savedFolder = localStorage.getItem('lastBibleFolder');
-            if (savedFolder && folders.find(f => f.folder_name === savedFolder)) {
+            if (savedFolder && folders.find(f => f.folder_name.trim() === savedFolder)) {
                 select.value = savedFolder;
             }
             
@@ -142,45 +99,70 @@
             };
 
             document.getElementById('search-input').oninput = handleSearch;
-
-        } catch (e) { console.error("初始化失敗", e); }
+        } catch (e) { console.error("初始化錯誤:", e); }
     }
 
-    // 2. 載入特定資料夾
+    // 讀取子資料夾資料
     async function loadFolder(folder) {
         if (!folder) return;
         currentFolder = folder;
-        
-        // 重設狀態
+        console.log(`正在載入資料夾: ${folder}`);
+
         if (currentImageOverlay) map.removeLayer(currentImageOverlay);
         masterData = [];
         allCoords = {};
-        
+        currentIndex = -1;
+        document.getElementById('info-panel').style.display = 'none';
+
         try {
-            // 載入事件
             const res = await fetch(`${folder}/data.csv`);
+            if (!res.ok) throw new Error(`讀取 ${folder}/data.csv 失敗`);
             const text = await res.text();
-            masterData = Papa.parse(text, { header: true }).data.filter(d => d.Title);
-            filteredData = [...masterData];
             
-            // 嘗試載入 coords_1 ~ coords_5 (假設最多5張，可自行增加)
+            const results = Papa.parse(text, { 
+                header: true, 
+                skipEmptyLines: 'greedy',
+                transformHeader: h => h.trim().replace(/^\ufeff/, '') 
+            });
+
+            // 智能找尋標題欄位（不分大小寫，對應 Title, Location, Description）
+            const keys = Object.keys(results.data[0] || {});
+            const tKey = keys.find(k => k.toLowerCase() === 'title');
+            const lKey = keys.find(k => k.toLowerCase() === 'location');
+            const dKey = keys.find(k => k.toLowerCase() === 'description');
+
+            // 標準化資料結構
+            masterData = results.data.map(d => ({
+                Title: d[tKey] || "",
+                Location: d[lKey] || "",
+                Description: d[dKey] || ""
+            })).filter(d => d.Title);
+
+            filteredData = [...masterData];
+
+            // 讀取座標檔
             for (let i = 1; i <= 5; i++) {
-                try {
-                    const cRes = await fetch(`${folder}/coords_${i}.csv`);
-                    if (cRes.ok) {
-                        const cText = await cRes.text();
-                        const cData = Papa.parse(cText, { header: true }).data;
-                        // 精準比對邏輯：按名字長度由長到短排序
-                        allCoords[i] = cData.sort((a, b) => b.Location.length - a.Location.length);
-                    }
-                } catch (e) {}
+                const cRes = await fetch(`${folder}/coords_${i}.csv`);
+                if (cRes.ok) {
+                    const cText = await cRes.text();
+                    const cData = Papa.parse(cText, { 
+                        header: true, 
+                        skipEmptyLines: 'greedy',
+                        transformHeader: h => h.trim().replace(/^\ufeff/, '')
+                    }).data;
+                    // 精準比對：按名字長度由長到短排序
+                    allCoords[i] = cData.sort((a, b) => b.Location.length - a.Location.length);
+                }
             }
             
             renderTable();
-        } catch (e) { alert("資料夾載入失敗，請檢查檔案名稱與路徑"); }
+            console.log("資料載入成功，總筆數:", masterData.length);
+        } catch (e) { 
+            console.error(e);
+            alert("載入失敗，請確認檔案路徑與名稱大小寫是否正確！");
+        }
     }
 
-    // 3. 渲染表格與搜尋
     function renderTable() {
         const body = document.getElementById('event-body');
         body.innerHTML = '';
@@ -204,19 +186,16 @@
         renderTable();
     }
 
-    // 4. 事件選取與導航
     function selectEvent(index) {
         if (index < 0 || index >= filteredData.length) return;
         currentIndex = index;
         const item = filteredData[index];
-        
-        // 更新 UI
         renderTable();
         document.getElementById('info-panel').style.display = 'block';
         document.getElementById('info-title').textContent = item.Title;
         document.getElementById('info-content').textContent = item.Description;
 
-        // 核心：尋找最適合的地圖 (包含最多地點的那張)
+        // 地圖切換邏輯
         let bestMapId = 1;
         let maxMatches = -1;
         const targetLocations = item.Location.split(/[,，、]/).map(l => l.trim());
@@ -224,12 +203,9 @@
         Object.keys(allCoords).forEach(id => {
             let matches = 0;
             targetLocations.forEach(loc => {
-                if (findCoord(loc, id)) matches++;
+                if (allCoords[id].find(c => loc.includes(c.Location))) matches++;
             });
-            if (matches > maxMatches) {
-                maxMatches = matches;
-                bestMapId = id;
-            }
+            if (matches > maxMatches) { maxMatches = matches; bestMapId = id; }
         });
 
         updateMapImage(bestMapId, targetLocations);
@@ -239,33 +215,24 @@
         let newIndex = currentIndex + step;
         if (newIndex >= 0 && newIndex < filteredData.length) {
             selectEvent(newIndex);
-            // 自動捲動側邊欄
             const trs = document.getElementById('event-body').getElementsByTagName('tr');
-            trs[newIndex].scrollIntoView({ block: 'nearest' });
+            if (trs[newIndex]) trs[newIndex].scrollIntoView({ block: 'nearest' });
         }
     }
 
-    // 5. 精準比對與地圖呈現
-    function findCoord(locName, mapId) {
-        // 精準比對邏輯：因為 allCoords 已經按長度排序，這裡找第一個包含的即可
-        return allCoords[mapId].find(c => locName.includes(c.Location));
-    }
-
     function updateMapImage(mapId, targetLocations) {
-        const img = new Image();
         const imgPath = `${currentFolder}/picture_${mapId}.png`;
+        const img = new Image();
         img.onload = function() {
             const bounds = [[0, 0], [img.height, img.width]];
             if (currentImageOverlay) map.removeLayer(currentImageOverlay);
             currentImageOverlay = L.imageOverlay(imgPath, bounds).addTo(map);
-            map.fitBounds(bounds);
-
-            // 標註地點 (僅標註目前地圖有的地點)
+            
             map.eachLayer(l => { if (l instanceof L.Marker || l instanceof L.Polyline) map.removeLayer(l); });
             
             let points = [];
             targetLocations.forEach(loc => {
-                const coord = findCoord(loc, mapId);
+                const coord = allCoords[mapId]?.find(c => loc.includes(c.Location));
                 if (coord) {
                     const pos = [parseFloat(coord.Y), parseFloat(coord.X)];
                     L.marker(pos).addTo(map).bindTooltip(coord.Location, {permanent: true});
@@ -276,6 +243,8 @@
             if (points.length > 0) {
                 const featureGroup = L.featureGroup(points.map(p => L.marker(p)));
                 map.flyToBounds(featureGroup.getBounds().pad(0.5));
+            } else {
+                map.fitBounds(bounds);
             }
         };
         img.src = imgPath;
@@ -283,6 +252,5 @@
 
     init();
 </script>
-
 </body>
 </html>
