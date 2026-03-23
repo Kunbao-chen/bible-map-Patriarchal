@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V10.2.1</title>
+    <title>亞伯拉罕史地互動地圖 V10.4</title>
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
         :root { --gold: #c5a059; --dark: #2c3e50; --handle-bg: #ddd; --brown: #5d4037; }
@@ -11,62 +11,57 @@
         body { margin: 0; padding: 0; width: 100vw; height: 100dvh; overflow: hidden; background: #fdf6e3; }
         #app-container { display: flex; width: 100%; height: 100%; flex-direction: row; }
         
-        /* 響應式佈局 */
         @media (max-width: 800px) and (orientation: portrait) {
             #app-container { flex-direction: column; }
             #side-panel { width: 100% !important; flex: 0 0 50dvh; }
         }
-        @media (orientation: landscape) {
-            .fab-menu { flex-direction: row !important; } /* 橫向時選單橫著長 */
-        }
+        @media (orientation: landscape) { .fab-menu { flex-direction: row !important; } }
 
         #map-section { flex: 1; position: relative; overflow: hidden; background: #e5d3b3; }
         #panzoom-element { display: inline-block; position: relative; }
         #bg-map { display: block; max-width: none; user-select: none; }
         
-        /* 可愛手繪感控制鈕 */
-        .fab-container { position: absolute; left: 15px; top: 15px; z-index: 2000; display: flex; flex-direction: column; gap: 10px; }
+        /* 縮小後的可愛控制鈕 */
+        .fab-container { position: absolute; left: 12px; top: 12px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; }
         .fab-main { 
-            width: 52px; height: 52px; background: rgba(255,255,255,0.4); 
+            width: 44px; height: 44px; background: rgba(255,255,255,0.4); 
             backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-            border: 2px solid var(--brown); border-radius: 16px; cursor: pointer;
+            border: 2px solid var(--brown); border-radius: 12px; cursor: pointer;
             display: flex; align-items: center; justify-content: center;
         }
-        .fab-main svg { width: 30px; height: 30px; fill: var(--brown); transition: transform 0.3s; }
+        .fab-main svg { width: 24px; height: 24px; fill: var(--brown); transition: transform 0.3s; }
         .fab-main.open svg { transform: rotate(45deg); }
 
-        .fab-menu { display: none; flex-direction: column; gap: 8px; padding: 5px; }
+        .fab-menu { display: none; flex-direction: column; gap: 6px; padding: 2px; }
         .fab-menu.show { display: flex; }
         .fab-item { 
-            width: 42px; height: 42px; border-radius: 12px; border: 1.5px solid var(--brown);
-            background: rgba(255,255,255,0.8); font-size: 16px; font-weight: bold;
+            width: 36px; height: 36px; border-radius: 10px; border: 1.5px solid var(--brown);
+            background: rgba(255,255,255,0.8); font-size: 14px; font-weight: bold;
             color: var(--brown); cursor: pointer; display: flex; align-items: center; justify-content: center;
         }
 
-        /* 搜尋框 */
-        .search-container { position: absolute; right: 15px; top: 15px; z-index: 2000; display: flex; align-items: center; }
+        .search-container { position: absolute; right: 12px; top: 12px; z-index: 2000; display: flex; align-items: center; }
         #search-input { 
             width: 0; opacity: 0; transition: all 0.3s;
-            border: 2px solid var(--brown); border-radius: 12px; outline: none; 
-            background: #fff; height: 42px; 
+            border: 2px solid var(--brown); border-radius: 10px; outline: none; 
+            background: #fff; height: 38px; 
         }
-        #search-input.open { width: 180px; opacity: 1; padding: 0 12px; margin-right: 8px; }
+        #search-input.open { width: 160px; opacity: 1; padding: 0 10px; margin-right: 6px; }
         .search-btn { 
-            width: 48px; height: 48px; border-radius: 14px; border: 2px solid var(--brown);
+            width: 40px; height: 40px; border-radius: 12px; border: 2px solid var(--brown);
             background: rgba(255,255,255,0.4); backdrop-filter: blur(8px);
             cursor: pointer; display: flex; align-items: center; justify-content: center;
         }
-        .search-btn svg { width: 26px; height: 26px; fill: var(--brown); }
+        .search-btn svg { width: 22px; height: 22px; fill: var(--brown); }
 
-        /* 地圖標籤 (維持 10.2 邏輯) */
+        /* 地圖標籤與遮擋判定 */
         .marker { position: absolute; transform-origin: center; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; pointer-events: none; z-index: 10; }
-        .marker .dot { width: 6px; height: 6px; background: rgba(93,64,55,0.5); border-radius: 50%; margin-bottom: 2px; }
-        .marker .label { padding: 3px 8px; border-radius: 10px; background: rgba(255,255,255,0.9); border: 1.5px solid var(--brown); white-space: nowrap; font-weight: bold; transition: opacity 0.2s; color: var(--brown); }
+        .marker .dot { width: 5px; height: 5px; background: rgba(93,64,55,0.5); border-radius: 50%; margin-bottom: 2px; }
+        .marker .label { padding: 2px 6px; border-radius: 8px; background: rgba(255,255,255,0.9); border: 1.5px solid var(--brown); white-space: nowrap; font-weight: bold; font-size: 13px; color: var(--brown); }
         .marker.highlight { z-index: 1000; }
         .marker.highlight .dot { background: #d32f2f; width: 8px; height: 8px; }
         .marker.highlight .label { background: #fffde7; border-width: 2px; opacity: 1 !important; visibility: visible !important; }
 
-        /* 面板與拉桿 */
         #resizer-main { background: var(--handle-bg); z-index: 1100; display: flex; align-items: center; justify-content: center; touch-action: none; }
         @media (min-width: 801px), (orientation: landscape) { #resizer-main { width: 12px; cursor: col-resize; height: 100%; } #resizer-main::after { content: "⋮"; } }
         @media (max-width: 800px) and (orientation: portrait) { #resizer-main { height: 16px; cursor: row-resize; width: 100%; } #resizer-main::after { content: "⋯"; } }
@@ -80,7 +75,6 @@
         table { width: 100%; border-collapse: collapse; }
         td { padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 14px; }
         tr.active-row td { background: #fffde7; font-weight: bold; border-left: 5px solid var(--gold); }
-        
         #folder-nav { padding: 10px; background: #eee; border-bottom: 1px solid #ccc; }
         #folder-select { width: 100%; padding: 8px; border-radius: 4px; }
     </style>
@@ -90,7 +84,7 @@
 <div id="app-container">
     <div id="map-section">
         <div class="search-container">
-            <input type="text" id="search-input" placeholder="搜尋..." oninput="handleSearch()">
+            <input type="text" id="search-input" placeholder="搜尋內容..." oninput="handleSearch()">
             <button class="search-btn" onclick="toggleSearch()" id="search-toggle-btn">
                 <svg id="svg-search-icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
             </button>
@@ -154,31 +148,19 @@
     let currentFolder = '', currentMapIdx = -1, currentEventIdx = -1;
     let baseMarkerFontSize = 13, locFreq = {};
 
-    // 1. 搜尋邏輯
     function toggleSearch() {
         const input = document.getElementById('search-input');
-        const btnIcon = document.getElementById('svg-search-icon');
-        if (input.classList.contains('open')) {
-            input.value = ''; input.classList.remove('open');
-            btnIcon.innerHTML = '<path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>';
-            handleSearch();
-        } else {
-            input.classList.add('open');
-            btnIcon.innerHTML = '<path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>';
-            input.focus();
-        }
+        input.classList.toggle('open');
+        if (input.classList.contains('open')) input.focus();
+        else { input.value = ''; handleSearch(); }
     }
 
     function handleSearch() {
         const term = document.getElementById('search-input').value.toLowerCase();
-        filteredData = eventData.filter(d => 
-            d.time.toLowerCase().includes(term) || d.event.toLowerCase().includes(term) || 
-            d.loc.toLowerCase().includes(term) || d.note.toLowerCase().includes(term)
-        );
+        filteredData = eventData.filter(d => Object.values(d).some(v => v.toLowerCase().includes(term)));
         renderTable(filteredData);
     }
 
-    // 2. 選單邏輯
     function toggleFab() { 
         document.getElementById('fab-menu').classList.toggle('show');
         document.getElementById('fab-main-btn').classList.toggle('open');
@@ -186,8 +168,7 @@
 
     function changeMarkerSize(delta) {
         baseMarkerFontSize = Math.max(8, Math.min(30, baseMarkerFontSize + delta));
-        applyMarkerStyles();
-        refreshCollision();
+        applyMarkerStyles(); refreshCollision();
     }
 
     function applyMarkerStyles() {
@@ -203,12 +184,16 @@
     function refreshCollision() {
         const markers = Array.from(document.querySelectorAll('.marker'));
         if (!markers.length) return;
+        
+        // 使用預算好的頻率與 Size 進行排序
         markers.sort((a, b) => {
             const aHi = a.classList.contains('highlight'), bHi = b.classList.contains('highlight');
             if (aHi !== bHi) return aHi ? -1 : 1;
             const aS = parseInt(a.dataset.size) || 0, bS = parseInt(b.dataset.size) || 0;
-            return (bS - aS) || ((locFreq[b.dataset.name]||0) - (locFreq[a.dataset.name]||0));
+            if (aS !== bS) return bS - aS;
+            return (locFreq[b.dataset.name] || 0) - (locFreq[a.dataset.name] || 0);
         });
+
         const occupied = [];
         markers.forEach(m => {
             const label = m.querySelector('.label');
@@ -220,13 +205,11 @@
         });
     }
 
-    // 3. 核心 Resizer 與轉向修正 (必要改動)
     function initResizers() {
         const rMain = document.getElementById('resizer-main'), side = document.getElementById('side-panel');
         const dragM = (e) => {
             const x = e.clientX || (e.touches ? e.touches[0].clientX : 0);
             const y = e.clientY || (e.touches ? e.touches[0].clientY : 0);
-            // 即時判定方向，不預設
             if (window.innerWidth < window.innerHeight) {
                 side.style.flex = `0 0 ${window.innerHeight - y}px`;
                 side.style.width = '100%';
@@ -253,46 +236,34 @@
         rInner.ontouchmove = dragI;
     }
 
-    // 4. 資料載入 (維持 V10.2 邏輯)
-    async function init() {
-        try {
-            const res = await fetch(`folder.csv?t=${Date.now()}`);
-            const folders = parseCSV(await res.text()).slice(1);
-            const select = document.getElementById('folder-select');
-            select.innerHTML = '<option value="">-- 請選擇史地章節 --</option>';
-            folders.forEach(f => {
-                if(f[0]) {
-                    const opt = document.createElement('option');
-                    opt.value = f[0]; opt.innerText = f[1] || f[0];
-                    select.appendChild(opt);
-                }
-            });
-            const last = localStorage.getItem('lastBibleFolder');
-            if (last) { select.value = last; loadProject(last); }
-        } catch(e) { console.error("Init failed", e); }
-    }
-
     async function loadProject(folder) {
         if (!folder) return;
         currentFolder = folder; localStorage.setItem('lastBibleFolder', folder);
         allCoords = []; locFreq = {};
         
         const dRes = await fetch(`${folder}/data.csv?t=${Date.now()}`);
-        eventData = parseCSV(await dRes.text()).slice(1).filter(r => r.length > 2).map(r => {
-            if (r[3]) r[3].split('→').forEach(n => {
-                const name = n.replace(/\(.*?\)/g, '').trim();
-                locFreq[name] = (locFreq[name] || 0) + 1;
-            });
-            return { id:r[0], time:r[1], event:r[2], loc:r[3], script:r[4], note:r[5] };
-        });
+        const rawEvents = parseCSV(await dRes.text()).slice(1).filter(r => r.length > 2);
+        
+        eventData = rawEvents.map(r => ({ id:r[0], time:r[1], event:r[2], loc:r[3], script:r[4], note:r[5] }));
         filteredData = [...eventData]; renderTable(filteredData);
+
+        // --- 核心優化：預算權重 (全文字掃描) ---
+        const fullStoryText = rawEvents.map(r => r.join(" ")).join(" ");
 
         for (let x = 1; x <= 15; x++) {
             try {
                 const cRes = await fetch(`${folder}/coords-${x}.csv`);
                 if (!cRes.ok) break;
                 parseCSV(await cRes.text()).forEach(r => {
-                    if(r[1]) allCoords.push({ n: r[1].trim(), x: r[5], y: r[6], mapIdx: x, size: parseInt(r[7]) || 0 });
+                    if(r[1]) {
+                        const name = r[1].trim();
+                        allCoords.push({ n: name, x: r[5], y: r[6], mapIdx: x, size: parseInt(r[7]) || 0 });
+                        // 計算該地名在大字串中出現的總次數 (避免重複計算，先檢查是否已存在權重)
+                        if (locFreq[name] === undefined) {
+                            const regex = new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+                            locFreq[name] = (fullStoryText.match(regex) || []).length;
+                        }
+                    }
                 });
             } catch(e) { break; }
         }
@@ -304,7 +275,7 @@
         tbody.innerHTML = '';
         data.forEach((item, i) => {
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td width="50">${item.id}</td><td>${item.event}</td>`;
+            tr.innerHTML = `<td width="40">${item.id}</td><td>${item.event}</td>`;
             tr.onclick = () => selectEvent(i);
             tbody.appendChild(tr);
         });
@@ -342,7 +313,7 @@
                 const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
                 line.setAttribute('x1', actives[i].x+'%'); line.setAttribute('y1', actives[i].y+'%');
                 line.setAttribute('x2', actives[i+1].x+'%'); line.setAttribute('y2', actives[i+1].y+'%');
-                line.setAttribute('stroke', '#d32f2f'); line.setAttribute('stroke-width', '3');
+                line.setAttribute('stroke', '#d32f2f'); line.setAttribute('stroke-width', '2.5');
                 sl.appendChild(line);
             }
         }
@@ -360,7 +331,6 @@
         setTimeout(refreshCollision, 60);
     }
 
-    // 工具函式
     function findBestMatch(t, db) {
         let b = null, m = Infinity;
         for (const i of db) {
@@ -388,14 +358,14 @@
     }
     function updateMinScale() {
         const img = document.getElementById('bg-map'), container = document.getElementById('map-section');
-        if (!img.offsetWidth) return;
+        if (!img || !img.offsetWidth) return;
         const absMin = Math.max(container.clientWidth / img.offsetWidth, container.clientHeight / img.offsetHeight);
         pz.setOptions({ minScale: absMin });
-        pz.zoom(pz.getScale() < absMin ? absMin : pz.getScale(), { animate: true });
+        if (pz.getScale() < absMin) pz.zoom(absMin, { animate: true });
     }
     function syncOverlay() {
         const img = document.getElementById('bg-map'), ov = document.getElementById('overlay-container');
-        ov.style.width = img.offsetWidth + 'px'; ov.style.height = img.offsetHeight + 'px';
+        if (img) { ov.style.width = img.offsetWidth + 'px'; ov.style.height = img.offsetHeight + 'px'; }
     }
     function parseCSV(t) {
         const rows = []; let row = [], cell = '', q = false;
@@ -427,12 +397,26 @@
     }
     function resetView() { pz.reset(); applyMarkerStyles(); refreshCollision(); }
 
-    window.onload = () => {
+    window.onload = async () => {
         const el = document.getElementById('panzoom-element');
         pz = Panzoom(el, { maxScale: 8, contain: 'outside' });
         el.addEventListener('panzoomchange', () => { applyMarkerStyles(); refreshCollision(); });
         document.getElementById('map-section').addEventListener('wheel', pz.zoomWithWheel);
-        init(); initResizers();
+        
+        const res = await fetch(`folder.csv?t=${Date.now()}`);
+        const folders = parseCSV(await res.text()).slice(1);
+        const select = document.getElementById('folder-select');
+        select.innerHTML = '<option value="">-- 請選擇史地章節 --</option>';
+        folders.forEach(f => {
+            if(f[0]) {
+                const opt = document.createElement('option');
+                opt.value = f[0]; opt.innerText = f[1] || f[0];
+                select.appendChild(opt);
+            }
+        });
+        const last = localStorage.getItem('lastBibleFolder');
+        if (last) { select.value = last; loadProject(last); }
+        initResizers();
     };
 </script>
 </body>
