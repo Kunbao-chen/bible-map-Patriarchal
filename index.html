@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V10.6.4</title>
+    <title>亞伯拉罕史地互動地圖 V10.6.5</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
         :root { --gold: #c5a059; --dark: #2c3e50; --brown: #5d4037; --ink-blue: rgba(50, 75, 95, 0.6); --handle-bg: #ddd; }
-        
         * { box-sizing: border-box; }
         body { 
             margin: 0; padding: 0; width: 100vw; height: 100dvh; overflow: hidden; 
@@ -25,80 +24,76 @@
         #panzoom-element { display: inline-block; position: relative; }
         #bg-map { display: block; max-width: none; user-select: none; }
         
-        .marker { position: absolute; transform-origin: center; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; pointer-events: none; z-index: 10; }
+        /* 標籤樣式：pointer-events 改為 auto 以支援點擊搜尋 */
+        .marker { position: absolute; transform-origin: center; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; z-index: 10; cursor: pointer; pointer-events: auto; }
         .marker .dot { width: 5px; height: 5px; background: rgba(93,64,55,0.5); border-radius: 50%; margin-bottom: 2px; }
-        
         .marker .label { 
             opacity: 0; padding: 2px 6px; border-radius: 8px; background: rgba(255,255,255,0.9); 
             border: 1.5px solid var(--brown); white-space: nowrap; font-weight: bold; font-size: 13px; 
-            color: var(--brown); transition: opacity 0.4s ease-in-out, transform 0.2s ease; 
-            font-family: inherit;
+            color: var(--brown); transition: opacity 0.4s ease-in-out, transform 0.2s ease; pointer-events: none;
         }
-        
-        .marker.region-type .label { 
-            background: none !important; border: none !important; 
-            font-family: 'ZCOOL KuaiLe', cursive; 
-            color: var(--ink-blue); text-shadow: 0 0 5px #fdf6e3, 0 0 2px #fdf6e3; letter-spacing: 2px;
-        }
+        .marker.region-type .label { background: none !important; border: none !important; font-family: 'ZCOOL KuaiLe', cursive; color: var(--ink-blue); text-shadow: 0 0 5px #fdf6e3, 0 0 2px #fdf6e3; }
 
         .marker.highlight { z-index: 1000 !important; }
-        .marker.highlight .label {
-            opacity: 1 !important;
-            animation: labelBreathe 0.8s infinite alternate ease-in-out;
-            background: #fffde7 !important; 
-            border: 2px solid #d32f2f !important; 
-            color: #d32f2f !important;
-            box-shadow: 0 0 12px rgba(211, 47, 47, 0.4);
-        }
-        @keyframes labelBreathe {
-            from { transform: translateY(0) scale(1); }
-            to { transform: translateY(-6px) scale(1.05); }
-        }
+        .marker.highlight .label { opacity: 1 !important; animation: labelBreathe 0.8s infinite alternate ease-in-out; background: #fffde7 !important; border: 2px solid #d32f2f !important; color: #d32f2f !important; }
+        @keyframes labelBreathe { from { transform: translateY(0) scale(1); } to { transform: translateY(-6px) scale(1.05); } }
 
+        /* 搜尋介面修正：加入清除鈕與歷史紀錄 */
+        .search-container { position: absolute; right: 12px; top: 12px; z-index: 2000; display: flex; flex-direction: column; align-items: flex-end; }
+        .search-bar-wrapper { display: flex; align-items: center; background: rgba(255,255,255,0.4); backdrop-filter: blur(8px); border-radius: 10px; border: 2px solid var(--brown); padding: 2px; }
+        #search-input { width: 0; opacity: 0; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); border: none; background: transparent; height: 32px; outline: none; font-size: 14px; }
+        #search-input.open { width: 160px; opacity: 1; padding: 0 8px; }
+        .search-clear { cursor: pointer; display: none; padding: 0 8px; color: var(--brown); font-weight: bold; font-size: 18px; }
+        .search-btn { width: 34px; height: 34px; cursor: pointer; display: flex; align-items: center; justify-content: center; background: transparent; border: none; }
+
+        /* 歷史紀錄選單 */
+        #search-history { 
+            display: none; width: 200px; background: white; border: 1px solid #ccc; border-radius: 8px; 
+            margin-top: 5px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); overflow-y: auto; max-height: 30dvh; 
+        }
+        .history-item { padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; cursor: pointer; font-size: 13px; }
+        .history-item:hover { background: #f9f9f9; }
+        .history-del { color: #ccc; padding: 4px; font-size: 16px; }
+        .history-del:hover { color: #d32f2f; }
+
+        /* 面板與拉桿 */
         #resizer-main { background: var(--handle-bg); z-index: 1100; display: flex; align-items: center; justify-content: center; touch-action: none; }
         @media (min-width: 801px), (orientation: landscape) { #resizer-main { width: 12px; cursor: col-resize; height: 100%; } #resizer-main::after { content: "⋮"; } }
         @media (max-width: 800px) and (orientation: portrait) { #resizer-main { height: 16px; cursor: row-resize; width: 100%; } #resizer-main::after { content: "⋯"; } }
         
         #side-panel { background: white; display: flex; flex-direction: column; overflow: hidden; position: relative; }
-        #folder-nav { padding: 10px; background: #eee; border-bottom: 1px solid #ccc; }
-        #folder-select { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; }
-        
-        #info-area { display: none; flex-direction: column; background: #fff; overflow: hidden; flex: 0 0 45%; min-height: 44px; }
+        #info-area { display: none; flex-direction: column; background: #fff; flex: 0 0 45%; min-height: 44px; }
         #info-header { background: var(--dark); color: white; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; height: 44px; }
-        #info-body { padding: 15px; overflow-y: auto; flex: 1; border-bottom: 1px solid #eee; font-size: 14px; }
-        #resizer-inner { height: 12px; background: #eee; cursor: row-resize; display: flex; align-items: center; justify-content: center; touch-action: none; flex-shrink: 0; border-top: 1px solid #ddd; border-bottom: 1px solid #ddd; }
+        #resizer-inner { height: 12px; background: #eee; cursor: row-resize; display: flex; align-items: center; justify-content: center; touch-action: none; flex-shrink: 0; border-top: 1px solid #ddd; }
         #list-container { flex: 1; overflow-y: auto; }
-        table { width: 100%; border-collapse: collapse; }
-        td { padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 14px; }
         tr.active-row td { background: #fffde7; font-weight: bold; border-left: 5px solid var(--gold); }
 
         .fab-container { position: absolute; left: 12px; top: 12px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; }
         .fab-main { width: 42px; height: 42px; background: rgba(255,255,255,0.4); backdrop-filter: blur(8px); border: 2px solid var(--brown); border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-        .fab-main svg { width: 22px; height: 22px; fill: var(--brown); }
-        .fab-menu { display: none; flex-direction: column; gap: 6px; }
-        .fab-menu.show { display: flex; }
-        .fab-item { width: 34px; height: 34px; border-radius: 10px; border: 1.5px solid var(--brown); background: rgba(255,255,255,0.8); font-size: 14px; font-weight: bold; color: var(--brown); cursor: pointer; display: flex; align-items: center; justify-content: center; }
-        .search-container { position: absolute; right: 12px; top: 12px; z-index: 2000; display: flex; align-items: center; }
-        #search-input { width: 0; opacity: 0; transition: all 0.3s; border: 2px solid var(--brown); border-radius: 10px; background: #fff; height: 36px; }
-        #search-input.open { width: 150px; opacity: 1; padding: 0 10px; margin-right: 6px; }
-        .search-btn { width: 38px; height: 38px; border-radius: 10px; border: 2px solid var(--brown); background: rgba(255,255,255,0.4); backdrop-filter: blur(8px); cursor: pointer; display: flex; align-items: center; justify-content: center; }
     </style>
 </head>
 <body>
 
 <div id="app-container">
     <div id="map-section">
-        <div class="search-container"><input type="text" id="search-input" placeholder="搜尋..." oninput="handleSearch()"><button class="search-btn" onclick="toggleSearch()"><svg viewBox="0 0 24 24" width="20"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg></button></div>
+        <div class="search-container">
+            <div class="search-bar-wrapper">
+                <input type="text" id="search-input" placeholder="搜尋..." oninput="handleSearch()" onfocus="showHistory()">
+                <div id="search-clear" class="search-clear" onclick="clearSearch()">×</div>
+                <button class="search-btn" onclick="toggleSearch()"><svg viewBox="0 0 24 24" width="20" fill="#5d4037"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg></button>
+            </div>
+            <div id="search-history"></div>
+        </div>
+        
         <div class="fab-container">
-            <button class="fab-main" onclick="toggleFab()"><svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg></button>
-            <div id="fab-menu" class="fab-menu">
-                <button class="fab-item" onclick="pz.zoomIn()">+</button>
-                <button class="fab-item" onclick="pz.zoomOut()">-</button>
-                <button class="fab-item" onclick="changeMarkerSize(1)">A+</button>
-                <button class="fab-item" onclick="changeMarkerSize(-1)">A-</button>
-                <button class="fab-item" onclick="resetView()">↺</button>
+            <button class="fab-main" onclick="toggleFab()"><svg viewBox="0 0 24 24" width="22" fill="#5d4037"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg></button>
+            <div id="fab-menu" class="fab-menu" style="display:none; flex-direction:column; gap:6px;">
+                <button class="fab-item" onclick="pz.zoomIn()" style="width:34px; height:34px; border-radius:10px;">+</button>
+                <button class="fab-item" onclick="pz.zoomOut()" style="width:34px; height:34px; border-radius:10px;">-</button>
+                <button class="fab-item" onclick="resetView()" style="width:34px; height:34px; border-radius:10px;">↺</button>
             </div>
         </div>
+
         <div id="panzoom-element">
             <img src="" id="bg-map">
             <div id="overlay-container" style="position:absolute; top:0; left:0; pointer-events:none;">
@@ -107,12 +102,14 @@
             </div>
         </div>
     </div>
+    
     <div id="resizer-main"></div>
+    
     <div id="side-panel">
-        <div id="folder-nav"><select id="folder-select" onchange="loadProject(this.value)"><option value="">載入中...</option></select></div>
+        <div id="folder-nav"><select id="folder-select" onchange="loadProject(this.value)" style="width:100%; padding:8px;"><option value="">載入中...</option></select></div>
         <div id="info-area">
             <div id="info-header" onclick="toggleInfo()"><div>📜 詳情 <span id="info-arrow">▼</span></div><div style="display:flex; gap:10px;"><button onclick="navEvent(-1); event.stopPropagation();">◀</button><button onclick="navEvent(1); event.stopPropagation();">▶</button></div></div>
-            <div id="info-body">
+            <div id="info-body" style="padding:15px; overflow-y:auto; flex:1;">
                 <div id="info-time" style="color:#888;"></div>
                 <h3 id="info-title" style="color:var(--gold); margin:5px 0;"></h3>
                 <div id="info-path" style="background:#f9f9f9; padding:8px; border-radius:4px; margin:5px 0; font-weight:bold;"></div>
@@ -126,73 +123,122 @@
 </div>
 
 <script>
-    let pz, eventData = [], allCoords = [], locFreq = {}, currentFolder = '', currentMapIdx = -1, currentEventIdx = -1, baseMarkerFontSize = 13;
+    let pz, eventData = [], filteredData = [], allCoords = [], locFreq = {}, currentFolder = '', currentMapIdx = -1, currentEventIdx = -1, baseMarkerFontSize = 13;
+    let searchHistory = JSON.parse(localStorage.getItem('bibleSearchHistory') || '[]');
 
-    // 修正 2: 拉桿座標偏移與防掉落精確修正
-    function initResizers() {
-        const rMain = document.getElementById('resizer-main'), side = document.getElementById('side-panel');
-        const rInner = document.getElementById('resizer-inner'), info = document.getElementById('info-area');
-
-        let startX, startY, startW, startH;
-
-        // 主拉桿 (地圖 vs 側邊欄)
-        rMain.onmousedown = rMain.ontouchstart = (e) => {
-            e.preventDefault();
-            const pointer = e.clientX || (e.touches ? e.touches[0].clientX : 0);
-            const pointerY = e.clientY || (e.touches ? e.touches[0].clientY : 0);
-            startX = pointer;
-            startY = pointerY;
-            startW = side.offsetWidth;
-            startH = side.offsetHeight;
-            window.onmousemove = window.ontouchmove = dragMain;
-            window.onmouseup = window.ontouchend = stopDrag;
-        };
-
-        function dragMain(e) {
-            const x = e.clientX || (e.touches ? e.touches[0].clientX : 0);
-            const y = e.clientY || (e.touches ? e.touches[0].clientY : 0);
-            
-            if (window.innerWidth < window.innerHeight && window.matchMedia("(orientation: portrait)").matches) {
-                // 直向：調整側邊欄高度
-                let newH = startH + (startY - y);
-                side.style.flex = `0 0 ${Math.max(100, Math.min(newH, window.innerHeight * 0.8))}px`;
-            } else {
-                // 橫向：調整側邊欄寬度
-                let newW = startW + (startX - x);
-                side.style.flex = "none"; 
-                side.style.width = `${Math.max(200, Math.min(newW, window.innerWidth * 0.7))}px`;
-            }
-            syncOverlay(); updateMinScale(); refreshCollision();
-        }
-
-        // 內拉桿 (詳情 vs 列表)
-        rInner.onmousedown = rInner.ontouchstart = (e) => {
-            e.preventDefault();
-            const pointerY = e.clientY || (e.touches ? e.touches[0].clientY : 0);
-            startY = pointerY;
-            startH = info.offsetHeight;
-            window.onmousemove = window.ontouchmove = dragInner;
-            window.onmouseup = window.ontouchend = stopDrag;
-        };
-
-        function dragInner(e) {
-            const y = e.clientY || (e.touches ? e.touches[0].clientY : 0);
-            const deltaY = y - startY;
-            let newH = startH + deltaY;
-            
-            // 防掉落保護：最小 44px (header 高度), 最大側邊欄的 90%
-            const maxH = side.offsetHeight * 0.9;
-            info.style.flex = `0 0 ${Math.max(44, Math.min(newH, maxH))}px`;
-        }
-
-        function stopDrag() { window.onmousemove = window.ontouchmove = null; }
+    // --- 搜尋核心邏輯 (修正 1: 導航脫鉤問題) ---
+    function toggleSearch() {
+        const input = document.getElementById('search-input');
+        const isOpening = !input.classList.contains('open');
+        input.classList.toggle('open');
+        if (isOpening) { input.focus(); } else { hideHistory(); }
     }
 
-    // 修正 1: 標籤重用與閃爍消除
+    function handleSearch(keyword) {
+        const input = document.getElementById('search-input');
+        const term = (keyword || input.value).toLowerCase();
+        const clearBtn = document.getElementById('search-clear');
+        
+        clearBtn.style.display = term ? 'block' : 'none';
+        
+        // 更新顯示用資料源
+        filteredData = eventData.filter(d => 
+            Object.values(d).some(v => String(v).toLowerCase().includes(term))
+        );
+        
+        renderTable(filteredData);
+        if (term && !keyword) saveHistory(term);
+    }
+
+    function clearSearch() {
+        const input = document.getElementById('search-input');
+        input.value = '';
+        input.classList.remove('open');
+        document.getElementById('search-clear').style.display = 'none';
+        hideHistory();
+        handleSearch(); // 重置表格
+    }
+
+    // --- 歷史紀錄管理 (修正歷史選單) ---
+    function saveHistory(term) {
+        if (!term.trim()) return;
+        searchHistory = [term, ...searchHistory.filter(h => h !== term)].slice(0, 10);
+        localStorage.setItem('bibleSearchHistory', JSON.stringify(searchHistory));
+        renderHistory();
+    }
+
+    function renderHistory() {
+        const panel = document.getElementById('search-history');
+        panel.innerHTML = searchHistory.map(h => `
+            <div class="history-item" onclick="useHistory('${h}')">
+                <span>${h}</span>
+                <span class="history-del" onclick="deleteHistory(event, '${h}')">×</span>
+            </div>
+        `).join('');
+    }
+
+    function useHistory(h) {
+        const input = document.getElementById('search-input');
+        input.value = h;
+        handleSearch(h);
+        hideHistory();
+    }
+
+    function deleteHistory(e, h) {
+        e.stopPropagation();
+        searchHistory = searchHistory.filter(item => item !== h);
+        localStorage.setItem('bibleSearchHistory', JSON.stringify(searchHistory));
+        renderHistory();
+    }
+
+    function showHistory() { if(searchHistory.length) document.getElementById('search-history').style.display = 'block'; renderHistory(); }
+    function hideHistory() { document.getElementById('search-history').style.display = 'none'; }
+
+    // --- 導航與事件選擇 (修正 1 & 2) ---
+    function selectEvent(idxInFiltered) {
+        if (idxInFiltered < 0 || idxInFiltered >= filteredData.length) return;
+        currentEventIdx = idxInFiltered;
+        const item = filteredData[idxInFiltered];
+        
+        // 更新 UI 高亮
+        Array.from(document.getElementById('table-body').rows).forEach((r, i) => 
+            r.className = i === idxInFiltered ? 'active-row' : ''
+        );
+
+        updateMapAndInfo(item);
+    }
+
+    function navEvent(step) {
+        const nextIdx = currentEventIdx + step;
+        if (nextIdx >= 0 && nextIdx < filteredData.length) {
+            selectEvent(nextIdx);
+            const r = document.getElementById('table-body').rows[nextIdx];
+            if(r) r.scrollIntoView({behavior:'smooth', block:'center'});
+        }
+    }
+
+    async function updateMapAndInfo(item) {
+        let targetMapIdx = 1;
+        const testNames = item.loc.split(/[+→]/).map(p => p.replace(/\(.*?\)/g, '').trim());
+        for (let x = 15; x >= 1; x--) {
+            const db = allCoords.filter(c => c.mapIdx === x);
+            if (db.length && testNames.every(n => findBestMatch(n, db))) { targetMapIdx = x; break; }
+        }
+        if (currentMapIdx !== targetMapIdx) {
+            currentMapIdx = targetMapIdx;
+            const img = document.getElementById('bg-map');
+            img.src = `${currentFolder}/picture-${targetMapIdx}.png`;
+            await new Promise(res => img.onload = () => { syncOverlay(); updateMinScale(); res(); });
+        }
+        const mapData = allCoords.filter(c => c.mapIdx === targetMapIdx);
+        renderVisuals(mapData, parseLocationLogic(item.loc, mapData));
+        updateInfoPanel(item);
+    }
+
+    // --- 地圖互動 (修正: 點擊地名即搜尋) ---
     function renderVisuals(db, logic) {
         const ml = document.getElementById('marker-layer'), sl = document.getElementById('svg-layer');
         sl.innerHTML = '';
-        
         logic.paths.forEach(path => {
             for (let i = 0; i < path.length - 1; i++) {
                 const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
@@ -205,10 +251,7 @@
 
         const existingMarkers = Array.from(ml.querySelectorAll('.marker'));
         const newPointNames = db.map(d => d.n);
-        
-        existingMarkers.forEach(m => {
-            if (!newPointNames.includes(m.dataset.name)) m.remove();
-        });
+        existingMarkers.forEach(m => { if (!newPointNames.includes(m.dataset.name)) m.remove(); });
 
         db.forEach(data => {
             const isH = logic.points.some(p => p.n === data.n);
@@ -218,46 +261,89 @@
                 m.className = 'marker';
                 m.dataset.name = data.n;
                 m.innerHTML = `<div class="dot"></div><div class="label">${data.n}</div>`;
+                // 點擊地名即搜尋
+                m.onclick = (e) => {
+                    e.stopPropagation();
+                    const input = document.getElementById('search-input');
+                    input.classList.add('open');
+                    input.value = data.n;
+                    handleSearch(data.n);
+                };
                 ml.appendChild(m);
             }
             m.className = `marker ${isH ? 'highlight' : ''} ${data.size > 2 ? 'region-type' : ''}`;
-            m.style.left = data.x + '%';
-            m.style.top = data.y + '%';
+            m.style.left = data.x + '%'; m.style.top = data.y + '%';
             m.dataset.size = data.size;
         });
-        
         applyMarkerStyles();
         if (logic.points.length) flyTo(logic.points);
         setTimeout(refreshCollision, 60); 
     }
 
-    function refreshCollision() {
-        const markers = Array.from(document.querySelectorAll('.marker'));
-        markers.sort((a, b) => {
-            const aH = a.classList.contains('highlight'), bH = b.classList.contains('highlight');
-            if (aH !== bH) return aH ? -1 : 1;
-            return (parseInt(a.dataset.size)||0) - (parseInt(b.dataset.size)||0) || (locFreq[b.dataset.name]||0) - (locFreq[a.dataset.name]||0);
-        });
+    // --- 拉桿防禦 (延續 V10.6.4) ---
+    function initResizers() {
+        const rMain = document.getElementById('resizer-main'), side = document.getElementById('side-panel');
+        const rInner = document.getElementById('resizer-inner'), info = document.getElementById('info-area');
+        let startX, startY, startW, startH;
 
-        const occupied = [];
-        markers.forEach(m => {
-            const label = m.querySelector('.label');
-            const rect = label.getBoundingClientRect();
-            const overlap = occupied.some(o => !(rect.right<o.left || rect.left>o.right || rect.bottom<o.top || rect.top>o.bottom));
-            if (overlap && !m.classList.contains('highlight')) label.style.opacity = "0";
-            else { label.style.opacity = "1"; occupied.push(rect); }
+        rMain.onmousedown = rMain.ontouchstart = (e) => {
+            e.preventDefault();
+            const pointer = e.clientX || (e.touches ? e.touches[0].clientX : 0);
+            const pointerY = e.clientY || (e.touches ? e.touches[0].clientY : 0);
+            startX = pointer; startY = pointerY; startW = side.offsetWidth; startH = side.offsetHeight;
+            window.onmousemove = window.ontouchmove = (ev) => {
+                const x = ev.clientX || (ev.touches ? ev.touches[0].clientX : 0);
+                const y = ev.clientY || (ev.touches ? ev.touches[0].clientY : 0);
+                if (window.innerWidth < window.innerHeight && window.matchMedia("(orientation: portrait)").matches) {
+                    side.style.flex = `0 0 ${Math.max(100, Math.min(startH + (startY - y), window.innerHeight * 0.8))}px`;
+                } else {
+                    side.style.flex = "none"; 
+                    side.style.width = `${Math.max(200, Math.min(startW + (startX - x), window.innerWidth * 0.7))}px`;
+                }
+                syncOverlay(); updateMinScale(); refreshCollision();
+            };
+            window.onmouseup = window.ontouchend = () => { window.onmousemove = window.ontouchmove = null; };
+        };
+
+        rInner.onmousedown = rInner.ontouchstart = (e) => {
+            e.preventDefault();
+            startY = e.clientY || (e.touches ? e.touches[0].clientY : 0);
+            startH = info.offsetHeight;
+            window.onmousemove = window.ontouchmove = (ev) => {
+                const y = ev.clientY || (ev.touches ? ev.touches[0].clientY : 0);
+                info.style.flex = `0 0 ${Math.max(44, Math.min(startH + (y - startY), side.offsetHeight * 0.9))}px`;
+            };
+            window.onmouseup = window.ontouchend = () => { window.onmousemove = window.ontouchmove = null; };
+        };
+    }
+
+    // --- 基礎工具函式 (維持穩定) ---
+    function renderTable(data) {
+        const tbody = document.getElementById('table-body');
+        tbody.innerHTML = '';
+        data.forEach((item, i) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td width="40" style="padding:12px; border-bottom:1px solid #eee;">${item.id}</td><td style="padding:12px; border-bottom:1px solid #eee;">${item.event}</td>`;
+            tr.onclick = () => selectEvent(i);
+            tbody.appendChild(tr);
         });
     }
 
-    // 核心基礎功能保持不動
-    function toggleSearch() { const i = document.getElementById('search-input'); i.classList.toggle('open'); if(i.classList.contains('open')) i.focus(); }
-    function handleSearch() {
-        const t = document.getElementById('search-input').value.toLowerCase();
-        renderTable(eventData.filter(d => Object.values(d).some(v => String(v).toLowerCase().includes(t))));
+    function updateInfoPanel(item) {
+        document.getElementById('info-area').style.display = 'flex';
+        document.getElementById('info-title').innerText = item.event;
+        document.getElementById('info-time').innerText = item.time;
+        document.getElementById('info-path').innerText = `地點：${item.loc}`;
+        document.getElementById('info-script').innerText = item.script;
+        document.getElementById('info-note').innerText = item.note;
     }
-    function toggleFab() { document.getElementById('fab-menu').classList.toggle('show'); }
-    function changeMarkerSize(d) { baseMarkerFontSize = Math.max(8, Math.min(40, baseMarkerFontSize + d)); applyMarkerStyles(); refreshCollision(); }
-    
+
+    function toggleInfo() {
+        const body = document.getElementById('info-body'), arrow = document.getElementById('info-arrow'), area = document.getElementById('info-area');
+        if (body.style.display === 'none') { body.style.display = 'block'; area.style.flex = "0 0 45%"; arrow.innerText = '▼'; }
+        else { body.style.display = 'none'; area.style.flex = "0 0 44px"; arrow.innerText = '▲'; }
+    }
+
     function parseCSV(t) {
         const rows = []; let row = [], cell = '', q = false;
         for (let i = 0; i < t.length; i++) {
@@ -280,43 +366,25 @@
         allCoords = []; locFreq = {};
         const dRes = await fetch(`${folder}/data.csv?t=${Date.now()}`);
         eventData = parseCSV(await dRes.text()).slice(1).filter(r => r.length > 2).map(r => ({ id:r[0], time:r[1], event:r[2], loc:r[3], script:r[4], note:r[5] }));
-        renderTable(eventData);
-        const fullText = eventData.map(d => Object.values(d).join(" ")).join(" ");
+        filteredData = [...eventData];
+        renderTable(filteredData);
         for (let x = 1; x <= 15; x++) {
             try {
                 const cRes = await fetch(`${folder}/coords-${x}.csv?t=${Date.now()}`);
                 if (!cRes.ok) break;
-                parseCSV(await cRes.text()).slice(1).forEach(r => {
-                    if(r[1] && r[5] && r[6]) {
-                        const name = r[1].trim();
-                        allCoords.push({ n: name, x: r[5], y: r[6], mapIdx: x, size: parseInt(r[7])||0 });
-                        if (locFreq[name] === undefined) locFreq[name] = (fullText.match(new RegExp(name, 'g')) || []).length;
-                    }
-                });
+                parseCSV(await cRes.text()).slice(1).forEach(r => { if(r[1] && r[5]) allCoords.push({ n: r[1].trim(), x: r[5], y: r[6], mapIdx: x, size: parseInt(r[7])||0 }); });
             } catch(e) { break; }
         }
-        if(eventData.length > 0) selectEvent(0);
+        if(filteredData.length > 0) selectEvent(0);
     }
 
-    async function selectEvent(idx) {
-        currentEventIdx = idx;
-        const item = eventData[idx];
-        Array.from(document.getElementById('table-body').rows).forEach((r, i) => r.className = i === idx ? 'active-row' : '');
-        let targetMapIdx = 1;
-        const testNames = item.loc.split(/[+→]/).map(p => p.replace(/\(.*?\)/g, '').trim());
-        for (let x = 15; x >= 1; x--) {
-            const db = allCoords.filter(c => c.mapIdx === x);
-            if (db.length && testNames.every(n => findBestMatch(n, db))) { targetMapIdx = x; break; }
+    function findBestMatch(t, db) {
+        let b = null, m = Infinity;
+        for (const i of db) {
+            if (i.n === t) return i;
+            if (i.n.includes(t) || t.includes(i.n)) { let d = Math.abs(i.n.length - t.length); if (d < m) { m = d; b = i; } }
         }
-        if (currentMapIdx !== targetMapIdx) {
-            currentMapIdx = targetMapIdx;
-            const img = document.getElementById('bg-map');
-            img.src = `${currentFolder}/picture-${targetMapIdx}.png`;
-            await new Promise(res => img.onload = () => { syncOverlay(); updateMinScale(); res(); });
-        }
-        const mapData = allCoords.filter(c => c.mapIdx === targetMapIdx);
-        renderVisuals(mapData, parseLocationLogic(item.loc, mapData));
-        updateInfoPanel(item);
+        return b;
     }
 
     function parseLocationLogic(locStr, db) {
@@ -334,25 +402,12 @@
         return result;
     }
 
-    function findBestMatch(t, db) {
-        let b = null, m = Infinity;
-        for (const i of db) {
-            if (i.n === t) return i;
-            if (i.n.includes(t) || t.includes(i.n)) {
-                let d = Math.abs(i.n.length - t.length);
-                if (d < m) { m = d; b = i; }
-            }
-        }
-        return b;
-    }
-
     function applyMarkerStyles() {
         const s = pz ? pz.getScale() : 1;
         const anti = s > 1 ? 1 / s : 1;
         document.querySelectorAll('.marker').forEach(m => {
             const gain = parseInt(m.dataset.size) || 0;
-            const label = m.querySelector('.label');
-            label.style.fontSize = (baseMarkerFontSize + (gain * 1.5)) + 'px';
+            m.querySelector('.label').style.fontSize = (baseMarkerFontSize + (gain * 1.5)) + 'px';
             m.style.transform = `translate(-50%, -50%) scale(${anti})`;
         });
     }
@@ -379,41 +434,20 @@
         ov.style.width = img.offsetWidth + 'px'; ov.style.height = img.offsetHeight + 'px';
     }
 
-    function renderTable(data) {
-        const tbody = document.getElementById('table-body');
-        tbody.innerHTML = '';
-        data.forEach((item, i) => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `<td width="40">${item.id}</td><td>${item.event}</td>`;
-            tr.onclick = () => selectEvent(i);
-            tbody.appendChild(tr);
+    function refreshCollision() {
+        const markers = Array.from(document.querySelectorAll('.marker'));
+        markers.sort((a, b) => (a.classList.contains('highlight') ? -1 : 1));
+        const occupied = [];
+        markers.forEach(m => {
+            const label = m.querySelector('.label');
+            const rect = label.getBoundingClientRect();
+            if (occupied.some(o => !(rect.right<o.left || rect.left>o.right || rect.bottom<o.top || rect.top>o.bottom)) && !m.classList.contains('highlight')) {
+                label.style.opacity = "0";
+            } else { label.style.opacity = "1"; occupied.push(rect); }
         });
     }
 
-    function navEvent(step) {
-        const n = currentEventIdx + step;
-        if (n >= 0 && n < eventData.length) {
-            selectEvent(n);
-            const r = document.getElementById('table-body').rows[n];
-            if(r) r.scrollIntoView({behavior:'smooth', block:'center'});
-        }
-    }
-
-    function toggleInfo() {
-        const body = document.getElementById('info-body'), arrow = document.getElementById('info-arrow'), area = document.getElementById('info-area');
-        if (body.style.display === 'none') { body.style.display = 'block'; area.style.flex = "0 0 45%"; arrow.innerText = '▼'; }
-        else { body.style.display = 'none'; area.style.flex = "0 0 44px"; arrow.innerText = '▲'; }
-    }
-
-    function updateInfoPanel(item) {
-        document.getElementById('info-area').style.display = 'flex';
-        document.getElementById('info-title').innerText = item.event;
-        document.getElementById('info-time').innerText = item.time;
-        document.getElementById('info-path').innerText = `地點：${item.loc}`;
-        document.getElementById('info-script').innerText = item.script;
-        document.getElementById('info-note').innerText = item.note;
-    }
-
+    function toggleFab() { const m = document.getElementById('fab-menu'); m.style.display = m.style.display === 'none' ? 'flex' : 'none'; }
     function resetView() { pz.reset(); applyMarkerStyles(); refreshCollision(); }
 
     window.onload = async () => {
