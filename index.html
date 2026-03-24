@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V10.6</title>
+    <title>亞伯拉罕史地互動地圖 V10.6.1</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
-        :root { --gold: #c5a059; --dark: #2c3e50; --brown: #5d4037; --ink-blue: rgba(50, 75, 95, 0.45); }
+        :root { --gold: #c5a059; --dark: #2c3e50; --brown: #5d4037; --ink-blue: rgba(50, 75, 95, 0.6); --handle-bg: #ddd; }
         * { box-sizing: border-box; font-family: "微軟正黑體", "ZCOOL KuaiLe", sans-serif; }
         body { margin: 0; padding: 0; width: 100vw; height: 100dvh; overflow: hidden; background: #fdf6e3; }
         #app-container { display: flex; width: 100%; height: 100%; flex-direction: row; }
@@ -21,7 +21,7 @@
         #panzoom-element { display: inline-block; position: relative; }
         #bg-map { display: block; max-width: none; user-select: none; }
         
-        /* UI 按鈕縮小化 */
+        /* UI 控制鈕 */
         .fab-container { position: absolute; left: 12px; top: 12px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; }
         .fab-main { width: 42px; height: 42px; background: rgba(255,255,255,0.4); backdrop-filter: blur(8px); border: 2px solid var(--brown); border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .fab-main svg { width: 22px; height: 22px; fill: var(--brown); }
@@ -37,7 +37,7 @@
         /* 標籤渲染：區域 vs 城市 */
         .marker { position: absolute; transform-origin: center; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; pointer-events: none; z-index: 10; transition: opacity 0.3s; }
         .marker .dot { width: 5px; height: 5px; background: rgba(93,64,55,0.5); border-radius: 50%; margin-bottom: 2px; }
-        .marker .label { padding: 2px 6px; border-radius: 8px; background: rgba(255,255,255,0.9); border: 1.5px solid var(--brown); white-space: nowrap; font-weight: bold; font-size: 13px; color: var(--brown); }
+        .marker .label { padding: 2px 6px; border-radius: 8px; background: rgba(255,255,255,0.9); border: 1.5px solid var(--brown); white-space: nowrap; font-weight: bold; font-size: 13px; color: var(--brown); transition: transform 0.2s; }
         
         /* 區域級 (Size > 2) */
         .marker.region-type .dot { display: none; }
@@ -46,19 +46,19 @@
             color: var(--ink-blue); text-shadow: 0 0 5px #fdf6e3, 0 0 2px #fdf6e3; letter-spacing: 2px;
         }
 
-        /* 高亮與指針 */
-        .marker.highlight { z-index: 1000 !important; opacity: 1 !important; }
-        .marker.highlight .label { background: #fffde7 !important; border: 2px solid #d32f2f !important; color: #d32f2f !important; box-shadow: 0 0 10px rgba(211,47,47,0.3); }
-        
-        /* 紅色指針動畫 */
-        .marker.highlight::before {
-            content: ""; position: absolute; top: -25px; border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 12px solid #d32f2f;
-            animation: pointerBounce 0.8s infinite alternate;
+        /* 呼吸感高亮效果 */
+        .marker.highlight { z-index: 1000 !important; }
+        .marker.highlight .label {
+            animation: labelBreathe 1.2s infinite alternate ease-in-out;
+            background: #fffde7 !important; 
+            border: 2px solid #d32f2f !important; 
+            color: #d32f2f !important;
+            box-shadow: 0 0 12px rgba(211, 47, 47, 0.4);
         }
-        @keyframes pointerBounce { from { transform: translateY(0); } to { transform: translateY(-8px); } }
-
-        /* 聚光燈模式：非相關點變淡 */
-        body.spotlight-mode .marker:not(.highlight) { opacity: 0.25; }
+        @keyframes labelBreathe {
+            from { transform: translateY(0) scale(1); }
+            to { transform: translateY(-6px) scale(1.05); }
+        }
 
         /* 面板控制 */
         #resizer-main { background: var(--handle-bg); z-index: 1100; display: flex; align-items: center; justify-content: center; touch-action: none; }
@@ -66,8 +66,12 @@
         @media (max-width: 800px) and (orientation: portrait) { #resizer-main { height: 16px; cursor: row-resize; width: 100%; } #resizer-main::after { content: "⋯"; } }
         
         #side-panel { background: white; display: flex; flex-direction: column; overflow: hidden; }
+        #folder-nav { padding: 10px; background: #eee; border-bottom: 1px solid #ccc; }
+        #folder-select { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc; } /* 修復寬度 */
+        
         #info-area { display: none; flex-direction: column; background: #fff; overflow: hidden; flex: 0 0 45%; }
         #info-header { background: var(--dark); color: white; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+        #info-header button { padding: 4px 10px; background: var(--gold); border: none; color: white; cursor: pointer; }
         #info-body { padding: 15px; overflow-y: auto; flex: 1; font-size: 14px; border-bottom: 1px solid #eee; }
         #resizer-inner { height: 10px; background: #eee; cursor: row-resize; display: flex; align-items: center; justify-content: center; }
         #list-container { flex: 1; overflow-y: auto; }
@@ -106,11 +110,11 @@
     <div id="side-panel">
         <div id="folder-nav"><select id="folder-select" onchange="loadProject(this.value)"><option value="">載入中...</option></select></div>
         <div id="info-area">
-            <div id="info-header" onclick="toggleInfo()"><div>📜 詳情 <span id="info-arrow">▼</span></div><div style="display:flex; gap:10px;"><button onclick="navEvent(-1)">◀</button><button onclick="navEvent(1)">▶</button></div></div>
+            <div id="info-header" onclick="toggleInfo()"><div>📜 詳情 <span id="info-arrow">▼</span></div><div style="display:flex; gap:10px;"><button onclick="navEvent(-1); event.stopPropagation();">◀</button><button onclick="navEvent(1); event.stopPropagation();">▶</button></div></div>
             <div id="info-body">
                 <div id="info-time" style="color:#888;"></div>
                 <h3 id="info-title" style="color:var(--gold);"></h3>
-                <div id="info-path" style="background:#f9f9f9; padding:8px; border-radius:4px; margin:5px 0;"></div>
+                <div id="info-path" style="background:#f9f9f9; padding:8px; border-radius:4px; margin:5px 0; font-weight:bold;"></div>
                 <p id="info-script" style="color:#2980b9;"></p>
                 <div id="info-note"></div>
             </div>
@@ -164,11 +168,9 @@
         if(eventData.length > 0) selectEvent(0);
     }
 
-    // 核心語法解析器：支援路徑(→)與並列(+)
     function parseLocationLogic(locStr, db) {
         const blocks = locStr.split('+').map(b => b.trim());
         const result = { paths: [], points: [] };
-        
         blocks.forEach(block => {
             if (block.includes('→')) {
                 const chain = block.split('→').map(p => p.replace(/\(.*?\)/g, '').trim())
@@ -189,7 +191,6 @@
         const rows = document.getElementById('table-body').rows;
         Array.from(rows).forEach((r, i) => r.className = i === idx ? 'active-row' : '');
         
-        // 判斷最佳地圖 (優先從最大索引找)
         let targetMapIdx = 1;
         const testNames = item.loc.split(/[+→]/).map(p => p.replace(/\(.*?\)/g, '').trim());
         for (let x = 15; x >= 1; x--) {
@@ -213,9 +214,7 @@
     function renderVisuals(db, logic) {
         const ml = document.getElementById('marker-layer'), sl = document.getElementById('svg-layer');
         ml.innerHTML = ''; sl.innerHTML = '';
-        document.body.classList.add('spotlight-mode');
 
-        // 1. 畫線 (Paths)
         logic.paths.forEach(path => {
             for (let i = 0; i < path.length - 1; i++) {
                 const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
@@ -226,7 +225,6 @@
             }
         });
 
-        // 2. 畫點 (Markers)
         db.forEach(data => {
             const isH = logic.points.some(p => p.n === data.n);
             const m = document.createElement('div');
@@ -244,12 +242,10 @@
 
     function refreshCollision() {
         const markers = Array.from(document.querySelectorAll('.marker'));
-        // 核心權重演算法：高亮 > 城市 > 區域 (常態下 Size 越大優先度越低)
         markers.sort((a, b) => {
             const aH = a.classList.contains('highlight'), bH = b.classList.contains('highlight');
             if (aH !== bH) return aH ? -1 : 1;
             const aSz = parseInt(a.dataset.size) || 0, bSz = parseInt(b.dataset.size) || 0;
-            // 如果不是高亮，則 Size 越大(區域)越後顯示
             return aSz - bSz || (locFreq[b.dataset.name] || 0) - (locFreq[a.dataset.name] || 0);
         });
 
@@ -275,7 +271,6 @@
         });
     }
 
-    // 基礎功能...
     function findBestMatch(t, db) {
         let b = null, m = Infinity;
         for (const i of db) {
@@ -287,6 +282,7 @@
         }
         return b;
     }
+
     function flyTo(pts) {
         const img = document.getElementById('bg-map'), c = document.getElementById('map-section');
         let tx = 0, ty = 0; pts.forEach(p => { tx += parseFloat(p.x); ty += parseFloat(p.y); });
@@ -294,6 +290,7 @@
         const sc = pz.getScale(), ox = img.offsetWidth/2, oy = img.offsetHeight/2;
         pz.pan(((c.clientWidth/2)-ox)/sc - (px-ox), ((c.clientHeight/2)-oy)/sc - (py-oy), { animate: true });
     }
+
     function updateMinScale() {
         const img = document.getElementById('bg-map'), c = document.getElementById('map-section');
         if (!img.offsetWidth) return;
@@ -301,10 +298,12 @@
         pz.setOptions({ minScale: min });
         if (pz.getScale() < min) pz.zoom(min, { animate: true });
     }
+
     function syncOverlay() {
         const img = document.getElementById('bg-map'), ov = document.getElementById('overlay-container');
         ov.style.width = img.offsetWidth + 'px'; ov.style.height = img.offsetHeight + 'px';
     }
+
     function parseCSV(t) {
         const rows = []; let row = [], cell = '', q = false;
         for (let i = 0; i < t.length; i++) {
@@ -320,6 +319,7 @@
         if (row.length > 0 || cell) { row.push(cell.trim()); rows.push(row); }
         return rows;
     }
+
     function initResizers() {
         const rMain = document.getElementById('resizer-main'), side = document.getElementById('side-panel');
         const dragM = (e) => {
@@ -332,6 +332,7 @@
         rMain.onmousedown = () => { window.onmousemove = dragM; window.onmouseup = () => window.onmousemove = null; };
         rMain.ontouchmove = dragM;
     }
+
     function renderTable(data) {
         const tbody = document.getElementById('table-body');
         tbody.innerHTML = '';
@@ -342,11 +343,22 @@
             tbody.appendChild(tr);
         });
     }
+
+    function navEvent(step) {
+        const n = currentEventIdx + step;
+        if (n >= 0 && n < eventData.length) {
+            selectEvent(n);
+            const targetRow = document.getElementById('table-body').rows[n];
+            if(targetRow) targetRow.scrollIntoView({behavior:'smooth', block:'center'});
+        }
+    }
+
     function toggleInfo() {
         const body = document.getElementById('info-body'), arrow = document.getElementById('info-arrow'), area = document.getElementById('info-area');
         if (body.style.display === 'none') { body.style.display = 'block'; area.style.flex = "0 0 45%"; arrow.innerText = '▼'; }
         else { body.style.display = 'none'; area.style.flex = "0 0 44px"; arrow.innerText = '▲'; }
     }
+
     function updateInfoPanel(item) {
         document.getElementById('info-area').style.display = 'flex';
         document.getElementById('info-title').innerText = item.event;
@@ -355,6 +367,7 @@
         document.getElementById('info-script').innerText = item.script;
         document.getElementById('info-note').innerText = item.note;
     }
+
     function resetView() { pz.reset(); applyMarkerStyles(); refreshCollision(); }
 
     window.onload = async () => {
