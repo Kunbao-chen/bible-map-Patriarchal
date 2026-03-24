@@ -16,7 +16,7 @@
         #panzoom-element { display: inline-block; position: relative; }
         #bg-map { display: block; max-width: none; user-select: none; }
         
-        /* 標籤樣式 - 絕對不動動畫部分 */
+        /* 標籤基礎與動畫：完全保留 V11.1 原樣 */
         .marker { position: absolute; transform-origin: center; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; z-index: 10; cursor: pointer; }
         .marker .dot { width: 5px; height: 5px; background: rgba(93,64,55,0.6); border-radius: 50%; margin-bottom: 2px; }
         .marker .label { 
@@ -25,7 +25,6 @@
             color: var(--brown); transition: opacity 0.2s;
         }
 
-        /* 呼吸與跳動動畫 - 嚴格保留 */
         @keyframes breathing { 0% { box-shadow: 0 0 0px #d32f2f; transform: scale(1); } 50% { box-shadow: 0 0 15px #d32f2f; transform: scale(1.2); } 100% { box-shadow: 0 0 0px #d32f2f; transform: scale(1); } }
         @keyframes jump { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
 
@@ -34,7 +33,7 @@
         .marker.highlight .dot { background: #d32f2f; animation: jump 1s infinite; }
         .marker.region-type .label { background: none !important; border: none !important; font-family: 'ZCOOL KuaiLe', cursive; color: var(--ink-blue); text-shadow: 0 0 5px #fdf6e3; }
 
-        /* 拉桿樣式優化 */
+        /* 拉桿：修正手機版消失問題 */
         #resizer-main { background: var(--handle-bg); z-index: 2100; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
         #resizer-main::after { content: "⋮"; color: #888; font-size: 12px; }
 
@@ -45,12 +44,11 @@
         #resizer-inner { height: 10px; background: #eee; cursor: row-resize; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
         #list-container { flex: 1; overflow-y: auto; background: white; }
 
-        /* 手機版適應：維持精簡但不消失 */
         @media (max-width: 800px) and (orientation: portrait) {
             #app-container { flex-direction: column; }
             #side-panel { width: 100% !important; height: 50%; flex: none; }
             #map-section { height: 50%; flex: none; }
-            #resizer-main { width: 100% !important; height: 12px; cursor: row-resize; } 
+            #resizer-main { width: 100% !important; height: 12px; cursor: row-resize; } /* 確保手機版顯示拉桿 */
             #resizer-main::after { content: "⋯"; }
         }
         @media (min-width: 801px) {
@@ -84,13 +82,11 @@
             </div>
         </div>
     </div>
-    
     <div id="resizer-main"></div>
-    
     <div id="side-panel">
         <div id="folder-nav" style="padding:5px; background:#eee;"><select id="folder-select" onchange="loadProject(this.value)" style="width:100%; padding:8px; border-radius:4px;"></select></div>
         <div id="info-area">
-            <div id="info-header" onclick="toggleInfo()"><div>📜 詳情 <span id="info-arrow">▼</span></div><div style="display:flex; gap:10px;"><button onclick="navEvent(-1); event.stopPropagation();">◀</button><button onclick="navEvent(1); event.stopPropagation();">▶</button></div></div>
+            <div id="info-header" onclick="toggleInfo()">📜 詳情 <span id="info-arrow">▼</span></div>
             <div id="info-body">
                 <div id="info-time" style="color:#888; font-size:12px;"></div>
                 <h3 id="info-title" style="color:var(--gold); margin:5px 0;"></h3>
@@ -107,7 +103,7 @@
 <script>
     let pz, eventData = [], filteredData = [], allCoords = [], locFreq = {}, currentFolder = '', currentMapIdx = -1, currentEventIdx = -1;
 
-    // 拉桿邏輯
+    // 拉桿功能：修復拖曳與方向判定
     function initResizers() {
         const rMain = document.getElementById('resizer-main'), side = document.getElementById('side-panel');
         const startDrag = (e) => {
@@ -138,7 +134,6 @@
         };
     }
 
-    // 基礎功能
     async function loadProject(folder) {
         if (!folder) return; currentFolder = folder; localStorage.setItem('lastBibleFolder', folder);
         const dRes = await fetch(`${folder}/data.csv?t=${Date.now()}`);
@@ -220,7 +215,6 @@
         setTimeout(refreshCollision, 150);
     }
 
-    // 輔助函式
     function parseCSV(t) { const rows = []; let row = [], cell = '', q = false; for (let i = 0; i < t.length; i++) { let c = t[i], n = t[i+1]; if (c === '"' && q && n === '"') { cell += '"'; i++; } else if (c === '"') q = !q; else if (c === ',' && !q) { row.push(cell.trim()); cell = ''; } else if ((c === '\n' || c === '\r') && !q) { if (row.length > 0 || cell) { row.push(cell.trim()); rows.push(row); } row = []; cell = ''; if (c === '\r' && n === '\n') i++; } else cell += c; } if (row.length > 0 || cell) { row.push(cell.trim()); rows.push(row); } return rows; }
     function findBestMatch(t, db) { let b = null, m = Infinity; for (const i of db) { if (i.n === t) return i; if (i.n.includes(t) || t.includes(i.n)) { let d = Math.abs(i.n.length - t.length); if (d < m) { m = d; b = i; } } } return b; }
     function parseLocationLogic(locStr, db) { const res = { paths: [], points: [] }; locStr.split('+').forEach(block => { if (block.includes('→')) { const chain = block.split('→').map(p => findBestMatch(p.replace(/\(.*?\)/g, '').trim(), db)).filter(p => p); if (chain.length > 1) res.paths.push(chain); chain.forEach(p => res.points.push(p)); } else { const pt = findBestMatch(block.replace(/\(.*?\)/g, '').trim(), db); if (pt) res.points.push(pt); } }); return res; }
