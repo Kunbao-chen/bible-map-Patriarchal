@@ -3,64 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V11.3</title>
+    <title>亞伯拉罕史地互動地圖 V11.1</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
-        :root { --gold: #c5a059; --dark: #2c3e50; --brown: #5d4037; --ink-blue: rgba(50, 75, 95, 0.6); --handle-bg: #ccc; }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        :root { --gold: #c5a059; --dark: #2c3e50; --brown: #5d4037; --ink-blue: rgba(50, 75, 95, 0.6); --handle-bg: #ddd; }
+        * { box-sizing: border-box; }
         body { margin: 0; padding: 0; width: 100vw; height: 100dvh; overflow: hidden; background: #fdf6e3; font-family: sans-serif; }
         
         #app-container { display: flex; width: 100%; height: 100%; flex-direction: row; }
+        @media (max-width: 800px) and (orientation: portrait) {
+            #app-container { flex-direction: column; }
+            #side-panel { width: 100% !important; height: 50% !important; flex: none !important; }
+            #map-section { height: 50% !important; flex: none !important; }
+        }
+
         #map-section { flex: 1; position: relative; overflow: hidden; background: #e5d3b3; }
         #panzoom-element { display: inline-block; position: relative; }
         #bg-map { display: block; max-width: none; user-select: none; }
         
-        /* 標籤基礎與動畫：完全保留 V11.1 原樣 */
-        .marker { position: absolute; transform-origin: center; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; z-index: 10; cursor: pointer; }
-        .marker .dot { width: 5px; height: 5px; background: rgba(93,64,55,0.6); border-radius: 50%; margin-bottom: 2px; }
+        /* 標籤樣式 */
+        .marker { position: absolute; transform-origin: center; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; z-index: 10; cursor: pointer; pointer-events: auto; }
+        .marker .dot { width: 5px; height: 5px; background: rgba(93,64,55,0.5); border-radius: 50%; margin-bottom: 2px; }
         .marker .label { 
-            padding: 2px 6px; border-radius: 8px; background: rgba(255,255,255,0.9); 
+            opacity: 0; padding: 2px 6px; border-radius: 8px; background: rgba(255,255,255,0.9); 
             border: 1.5px solid var(--brown); white-space: nowrap; font-weight: bold; font-size: 13px; 
-            color: var(--brown); transition: opacity 0.2s;
+            color: var(--brown); transition: opacity 0.3s; pointer-events: none;
         }
-
-        @keyframes breathing { 0% { box-shadow: 0 0 0px #d32f2f; transform: scale(1); } 50% { box-shadow: 0 0 15px #d32f2f; transform: scale(1.2); } 100% { box-shadow: 0 0 0px #d32f2f; transform: scale(1); } }
-        @keyframes jump { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-
-        .marker.highlight { z-index: 1000 !important; }
-        .marker.highlight .label { opacity: 1 !important; background: #fffde7 !important; border: 2px solid #d32f2f !important; color: #d32f2f !important; animation: breathing 2s infinite ease-in-out; }
-        .marker.highlight .dot { background: #d32f2f; animation: jump 1s infinite; }
         .marker.region-type .label { background: none !important; border: none !important; font-family: 'ZCOOL KuaiLe', cursive; color: var(--ink-blue); text-shadow: 0 0 5px #fdf6e3; }
+        .marker.highlight { z-index: 1000 !important; }
+        .marker.highlight .label { opacity: 1 !important; animation: labelBreathe 0.8s infinite alternate; background: #fffde7 !important; border: 2px solid #d32f2f !important; color: #d32f2f !important; }
+        @keyframes labelBreathe { from { transform: translateY(0) scale(1); } to { transform: translateY(-5px) scale(1.05); } }
 
-        /* 拉桿：修正手機版消失問題 */
-        #resizer-main { background: var(--handle-bg); z-index: 2100; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-        #resizer-main::after { content: "⋮"; color: #888; font-size: 12px; }
-
-        #side-panel { width: 350px; background: white; display: flex; flex-direction: column; overflow: hidden; z-index: 1500; position: relative; }
-        #info-area { flex-shrink: 0; display: none; flex-direction: column; background: #fff; max-height: 60%; border-bottom: 1px solid #ddd; }
-        #info-header { background: var(--dark); color: white; padding: 0 15px; display: flex; justify-content: space-between; align-items: center; height: 44px; flex-shrink: 0; cursor: pointer; }
-        #info-body { padding: 15px; overflow-y: auto; flex: 1; }
-        #resizer-inner { height: 10px; background: #eee; cursor: row-resize; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-        #list-container { flex: 1; overflow-y: auto; background: white; }
-
-        @media (max-width: 800px) and (orientation: portrait) {
-            #app-container { flex-direction: column; }
-            #side-panel { width: 100% !important; height: 50%; flex: none; }
-            #map-section { height: 50%; flex: none; }
-            #resizer-main { width: 100% !important; height: 12px; cursor: row-resize; } /* 確保手機版顯示拉桿 */
-            #resizer-main::after { content: "⋯"; }
-        }
-        @media (min-width: 801px) {
-            #resizer-main { width: 8px; cursor: col-resize; }
-        }
-
-        .search-container { position: absolute; right: 12px; top: 12px; z-index: 2000; }
-        .search-bar-wrapper { display: flex; align-items: center; background: rgba(255,255,255,0.8); backdrop-filter: blur(5px); border-radius: 10px; border: 2px solid var(--brown); }
-        #search-input { width: 0; opacity: 0; transition: 0.3s; border: none; background: transparent; height: 32px; outline: none; }
+        /* 搜尋與按鈕 */
+        .search-container { position: absolute; right: 12px; top: 12px; z-index: 2000; display: flex; flex-direction: column; align-items: flex-end; }
+        .search-bar-wrapper { display: flex; align-items: center; background: rgba(255,255,255,0.6); backdrop-filter: blur(8px); border-radius: 10px; border: 2px solid var(--brown); }
+        #search-input { width: 0; opacity: 0; transition: 0.4s; border: none; background: transparent; height: 32px; outline: none; }
         #search-input.open { width: 160px; opacity: 1; padding: 0 8px; }
+        .search-btn { width: 34px; height: 34px; cursor: pointer; background: transparent; border: none; }
+
+        /* 佈局組件 */
+        #resizer-main { background: var(--handle-bg); z-index: 1100; width: 12px; cursor: col-resize; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        #resizer-main::after { content: "⋮"; color: #999; }
+        @media (max-width: 800px) { #resizer-main { display: none; } }
+
+        #side-panel { width: 350px; background: white; display: flex; flex-direction: column; overflow: hidden; position: relative; z-index: 1500; }
+        #folder-nav { flex-shrink: 0; padding: 5px; background: #eee; z-index: 10; }
+        #info-area { flex-shrink: 0; display: none; flex-direction: column; background: #fff; max-height: 60%; border-bottom: 1px solid #ddd; }
+        #info-header { background: var(--dark); color: white; padding: 0 15px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; height: 44px; cursor: pointer; }
+        #info-body { padding: 15px; overflow-y: auto; flex: 1; }
+        #resizer-inner { height: 12px; background: var(--handle-bg); cursor: row-resize; display: flex; align-items: center; justify-content: center; flex-shrink: 0; user-select: none; }
+        #resizer-inner::after { content: "⋯"; color: #999; }
+        #list-container { flex: 1; overflow-y: auto; background: white; }
+        
         tr.active-row td { background: #fffde7; font-weight: bold; border-left: 5px solid var(--gold); }
-        table { width: 100%; border-collapse: collapse; }
+        .fab-container { position: absolute; left: 12px; top: 12px; z-index: 2000; }
+        .fab-main { width: 42px; height: 42px; background: rgba(255,255,255,0.6); border: 2px solid var(--brown); border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .fab-menu button { width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--brown); background: white; margin-top: 5px; font-weight: bold; display: block; }
     </style>
 </head>
 <body>
@@ -70,10 +69,22 @@
         <div class="search-container">
             <div class="search-bar-wrapper">
                 <div id="search-clear" style="display:none; cursor:pointer; padding: 0 8px; color:var(--brown);" onclick="clearSearch()">×</div>
-                <input type="text" id="search-input" placeholder="搜尋..." oninput="handleSearch()">
-                <button style="background:none; border:none; padding:5px; cursor:pointer;" onclick="toggleSearch()">🔍</button>
+                <input type="text" id="search-input" placeholder="搜尋內容..." oninput="handleSearch()">
+                <button class="search-btn" onclick="toggleSearch()"><svg viewBox="0 0 24 24" width="20" fill="#5d4037"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg></button>
             </div>
         </div>
+        
+        <div class="fab-container">
+            <button class="fab-main" onclick="toggleFab()"><svg viewBox="0 0 24 24" width="22" fill="#5d4037"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg></button>
+            <div id="fab-menu" style="display:none;">
+                <button onclick="pz.zoomIn()">+</button>
+                <button onclick="pz.zoomOut()">-</button>
+                <button onclick="changeFontSize(2)">A+</button>
+                <button onclick="changeFontSize(-2)">A-</button>
+                <button onclick="resetView()">↺</button>
+            </div>
+        </div>
+
         <div id="panzoom-element">
             <img src="" id="bg-map">
             <div id="overlay-container" style="position:absolute; top:0; left:0; pointer-events:none;">
@@ -82,16 +93,18 @@
             </div>
         </div>
     </div>
+    
     <div id="resizer-main"></div>
+    
     <div id="side-panel">
-        <div id="folder-nav" style="padding:5px; background:#eee;"><select id="folder-select" onchange="loadProject(this.value)" style="width:100%; padding:8px; border-radius:4px;"></select></div>
+        <div id="folder-nav"><select id="folder-select" onchange="loadProject(this.value)" style="width:100%; padding:8px; border-radius:4px;"><option value="">載入中...</option></select></div>
         <div id="info-area">
-            <div id="info-header" onclick="toggleInfo()">📜 詳情 <span id="info-arrow">▼</span></div>
+            <div id="info-header" onclick="toggleInfo()"><div>📜 詳情 <span id="info-arrow">▼</span></div><div style="display:flex; gap:10px;"><button onclick="navEvent(-1); event.stopPropagation();">◀</button><button onclick="navEvent(1); event.stopPropagation();">▶</button></div></div>
             <div id="info-body">
                 <div id="info-time" style="color:#888; font-size:12px;"></div>
                 <h3 id="info-title" style="color:var(--gold); margin:5px 0;"></h3>
-                <div id="info-path" style="background:#f9f9f9; padding:8px; border-radius:4px; font-weight:bold; font-size:14px;"></div>
-                <p id="info-script" style="color:#2980b9; margin:8px 0; font-size:14px;"></p>
+                <div id="info-path" style="background:#f9f9f9; padding:8px; border-radius:4px; margin:5px 0; font-weight:bold; font-size:14px;"></div>
+                <p id="info-script" style="color:#2980b9; font-size:14px; margin:8px 0;"></p>
                 <div id="info-note" style="font-size:14px; line-height:1.6;"></div>
             </div>
         </div>
@@ -101,69 +114,155 @@
 </div>
 
 <script>
-    let pz, eventData = [], filteredData = [], allCoords = [], locFreq = {}, currentFolder = '', currentMapIdx = -1, currentEventIdx = -1;
+    let pz, eventData = [], filteredData = [], allCoords = [], locFreq = {}, currentFolder = '', currentMapIdx = -1, currentEventIdx = -1, baseMarkerFontSize = 13;
 
-    // 拉桿功能：修復拖曳與方向判定
-    function initResizers() {
-        const rMain = document.getElementById('resizer-main'), side = document.getElementById('side-panel');
-        const startDrag = (e) => {
-            if (e.cancelable) e.preventDefault();
-            const isPortrait = window.innerHeight > window.innerWidth && window.innerWidth < 800;
-            const startPos = isPortrait ? (e.clientY || e.touches[0].clientY) : (e.clientX || e.touches[0].clientX);
-            const startDim = isPortrait ? side.offsetHeight : side.offsetWidth;
-            const moveHandler = (ev) => {
-                const cur = isPortrait ? (ev.clientY || (ev.touches ? ev.touches[0].clientY : 0)) : (ev.clientX || (ev.touches ? ev.touches[0].clientX : 0));
-                const delta = startPos - cur;
-                if (isPortrait) side.style.height = Math.max(100, startDim + delta) + 'px';
-                else side.style.width = Math.max(200, startDim + delta) + 'px';
-                syncOverlay(); updateMinScale(); refreshCollision();
-            };
-            document.onmousemove = document.ontouchmove = moveHandler;
-            document.onmouseup = document.ontouchend = () => document.onmousemove = document.ontouchmove = null;
-        };
-        rMain.onmousedown = rMain.ontouchstart = startDrag;
+    // --- 1. 搜尋邏輯：全文命中且依序號排序 ---
+    function handleSearch(keyword) {
+        const input = document.getElementById('search-input');
+        if (keyword !== undefined) { input.value = keyword; input.classList.add('open'); }
+        const term = input.value.trim().toLowerCase();
+        document.getElementById('search-clear').style.display = term ? 'block' : 'none';
 
-        const rInner = document.getElementById('resizer-inner'), info = document.getElementById('info-area');
-        rInner.onmousedown = rInner.ontouchstart = (e) => {
-            const sy = e.clientY || e.touches[0].clientY, sh = info.offsetHeight;
-            document.onmousemove = document.ontouchmove = (ev) => {
-                const y = ev.clientY || (ev.touches ? ev.touches[0].clientY : 0);
-                info.style.height = Math.max(44, sh + (y - sy)) + 'px';
-            };
-            document.onmouseup = document.ontouchend = () => document.onmousemove = document.ontouchmove = null;
-        };
+        if (!term) {
+            filteredData = [...eventData];
+        } else {
+            filteredData = eventData.filter(item => item._searchStr.includes(term))
+                                    .sort((a, b) => parseInt(a.id) - parseInt(b.id));
+        }
+        renderTable(filteredData);
+        if (term && filteredData.length > 0) selectEvent(0);
+    }
+
+    function clearSearch() { document.getElementById('search-input').value = ''; handleSearch(); }
+    function toggleSearch() { const i = document.getElementById('search-input'); i.classList.toggle('open'); if(i.classList.contains('open')) i.focus(); }
+
+    // --- 2. 權重與避讓：Size優先，顯示才佔位 ---
+    function refreshCollision() {
+        const markers = Array.from(document.querySelectorAll('.marker'));
+        
+        // 核心排序：當前點選 > Size小優先 > 頻率高優先
+        markers.sort((a, b) => {
+            if (a.classList.contains('highlight')) return -1;
+            if (b.classList.contains('highlight')) return 1;
+            const sA = parseInt(a.dataset.size) || 0;
+            const sB = parseInt(b.dataset.size) || 0;
+            if (sA !== sB) return sA - sB; // Size 越小越排前
+            return (locFreq[b.dataset.name] || 0) - (locFreq[a.dataset.name] || 0); // 次數多排前
+        });
+
+        const occupied = [];
+        markers.forEach(m => {
+            const label = m.querySelector('.label');
+            const rect = label.getBoundingClientRect();
+            // 碰撞檢測邏輯
+            const isOverlap = occupied.some(o => !(rect.right<o.left || rect.left>o.right || rect.bottom<o.top || rect.top>o.bottom));
+            
+            if (isOverlap && !m.classList.contains('highlight')) {
+                label.style.opacity = "0";
+                // 重要：不顯示的地名不加入 occupied 陣列，不佔位
+            } else {
+                label.style.opacity = "1";
+                occupied.push(rect); // 確定顯示後才佔位
+            }
+        });
+    }
+
+    // --- 3. 字體縮放：s > 1 抗縮放；s <= 1 隨地圖縮小 ---
+    function applyMarkerStyles() {
+        if (!pz) return;
+        const s = pz.getScale();
+        const antiScale = s > 1 ? (1 / s) : 1; 
+        document.querySelectorAll('.marker').forEach(m => {
+            const gain = parseInt(m.dataset.size) || 0;
+            const label = m.querySelector('.label');
+            label.style.fontSize = (baseMarkerFontSize + (gain * 1.5)) + 'px';
+            m.style.transform = `translate(-50%, -50%) scale(${antiScale})`;
+        });
+    }
+
+    function changeFontSize(delta) {
+        baseMarkerFontSize = Math.max(8, Math.min(40, baseMarkerFontSize + delta));
+        applyMarkerStyles();
+        refreshCollision();
     }
 
     async function loadProject(folder) {
-        if (!folder) return; currentFolder = folder; localStorage.setItem('lastBibleFolder', folder);
+        if (!folder) return;
+        currentFolder = folder;
+        localStorage.setItem('lastBibleFolder', folder);
+        
         const dRes = await fetch(`${folder}/data.csv?t=${Date.now()}`);
         const rows = parseCSV(await dRes.text()).slice(1).filter(r => r.length > 2);
-        locFreq = {};
+        
+        locFreq = {}; 
         eventData = rows.map(r => {
             const obj = { id:r[0], time:r[1], event:r[2], loc:r[3], script:r[4], note:r[5] };
             obj._searchStr = Object.values(obj).join('|').toLowerCase();
-            obj.loc.split(/[+→]/).forEach(n => { const c = n.replace(/\(.*?\)/g, '').trim(); if(c) locFreq[c] = (locFreq[c] || 0) + 1; });
+            obj.loc.split(/[+→]/).forEach(n => {
+                const clean = n.replace(/\(.*?\)/g, '').trim();
+                if(clean) locFreq[clean] = (locFreq[clean] || 0) + 1;
+            });
             return obj;
         });
+
         allCoords = [];
         for (let x = 1; x <= 15; x++) {
             try {
                 const cRes = await fetch(`${folder}/coords-${x}.csv?t=${Date.now()}`);
                 if (!cRes.ok) break;
-                parseCSV(await cRes.text()).slice(1).forEach(r => { if(r[1] && r[5]) allCoords.push({ n:r[1].trim(), x:r[5], y:r[6], mapIdx:x, size:parseInt(r[7])||0 }); });
+                parseCSV(await cRes.text()).slice(1).forEach(r => {
+                    if(r[1] && r[5]) allCoords.push({ n:r[1].trim(), x:r[5], y:r[6], mapIdx:x, size:parseInt(r[7])||0 });
+                });
             } catch(e) { break; }
         }
-        handleSearch();
+        filteredData = [...eventData];
+        renderTable(filteredData);
         if(filteredData.length > 0) selectEvent(0);
     }
 
-    function selectEvent(idx, autoScroll = true) {
+    function renderVisuals(db, logic) {
+        const ml = document.getElementById('marker-layer'), sl = document.getElementById('svg-layer');
+        sl.innerHTML = '';
+        logic.paths.forEach(path => {
+            for (let i = 0; i < path.length - 1; i++) {
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', path[i].x+'%'); line.setAttribute('y1', path[i].y+'%');
+                line.setAttribute('x2', path[i+1].x+'%'); line.setAttribute('y2', path[i+1].y+'%');
+                line.setAttribute('stroke', '#d32f2f'); line.setAttribute('stroke-width', '2.5');
+                sl.appendChild(line);
+            }
+        });
+
+        const currentPointNames = db.map(d => d.n);
+        Array.from(ml.querySelectorAll('.marker')).forEach(m => { if(!currentPointNames.includes(m.dataset.name)) m.remove(); });
+
+        db.forEach(data => {
+            const isH = logic.points.some(p => p.n === data.n);
+            let m = ml.querySelector(`.marker[data-name="${data.n}"]`);
+            if (!m) {
+                m = document.createElement('div');
+                m.className = 'marker';
+                m.dataset.name = data.n;
+                m.innerHTML = `<div class="dot"></div><div class="label">${data.n}</div>`;
+                // 修改：點擊地名同步更新搜尋框
+                m.onclick = (e) => { e.stopPropagation(); handleSearch(data.n); };
+                ml.appendChild(m);
+            }
+            m.className = `marker ${isH ? 'highlight' : ''} ${data.size > 2 ? 'region-type' : ''}`;
+            m.style.left = data.x + '%'; m.style.top = data.y + '%';
+            m.dataset.size = data.size;
+        });
+        applyMarkerStyles();
+        if (logic.points.length) flyTo(logic.points);
+        setTimeout(refreshCollision, 100);
+    }
+
+    function selectEvent(idx) {
         if (idx < 0 || idx >= filteredData.length) return;
         currentEventIdx = idx;
-        const rows = document.getElementById('table-body').rows;
-        Array.from(rows).forEach((r, i) => r.className = i === idx ? 'active-row' : '');
-        if (autoScroll) rows[idx]?.scrollIntoView({ block: 'nearest' });
-        updateMapAndInfo(filteredData[idx]);
+        const item = filteredData[idx];
+        Array.from(document.getElementById('table-body').rows).forEach((r, i) => r.className = i === idx ? 'active-row' : '');
+        updateMapAndInfo(item);
     }
 
     async function updateMapAndInfo(item) {
@@ -184,74 +283,110 @@
         updateInfoPanel(item);
     }
 
-    function renderVisuals(db, logic) {
-        const ml = document.getElementById('marker-layer'), sl = document.getElementById('svg-layer');
-        sl.innerHTML = '';
-        logic.paths.forEach(path => {
-            for (let i = 0; i < path.length - 1; i++) {
-                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                line.setAttribute('x1', path[i].x+'%'); line.setAttribute('y1', path[i].y+'%');
-                line.setAttribute('x2', path[i+1].x+'%'); line.setAttribute('y2', path[i+1].y+'%');
-                line.setAttribute('stroke', '#d32f2f'); line.setAttribute('stroke-width', '2.5');
-                sl.appendChild(line);
-            }
-        });
-        const currentPointNames = db.map(d => d.n);
-        Array.from(ml.querySelectorAll('.marker')).forEach(m => { if(!currentPointNames.includes(m.dataset.name)) m.remove(); });
-        db.forEach(data => {
-            const isH = logic.points.some(p => p.n === data.n);
-            let m = ml.querySelector(`.marker[data-name="${data.n}"]`);
-            if (!m) {
-                m = document.createElement('div'); m.className = 'marker'; m.dataset.name = data.n;
-                m.innerHTML = `<div class="dot"></div><div class="label">${data.n}</div>`;
-                m.onclick = (e) => { e.stopPropagation(); handleSearch(data.n); };
-                ml.appendChild(m);
-            }
-            m.className = `marker ${isH ? 'highlight' : ''} ${data.size > 2 ? 'region-type' : ''}`;
-            m.style.left = data.x + '%'; m.style.top = data.y + '%'; m.dataset.size = data.size;
-        });
-        applyMarkerStyles();
-        if (logic.points.length) flyTo(logic.points);
-        setTimeout(refreshCollision, 150);
+    function findBestMatch(t, db) {
+        let b = null, m = Infinity;
+        for (const i of db) {
+            if (i.n === t) return i;
+            if (i.n.includes(t) || t.includes(i.n)) { let d = Math.abs(i.n.length - t.length); if (d < m) { m = d; b = i; } }
+        }
+        return b;
     }
 
-    function parseCSV(t) { const rows = []; let row = [], cell = '', q = false; for (let i = 0; i < t.length; i++) { let c = t[i], n = t[i+1]; if (c === '"' && q && n === '"') { cell += '"'; i++; } else if (c === '"') q = !q; else if (c === ',' && !q) { row.push(cell.trim()); cell = ''; } else if ((c === '\n' || c === '\r') && !q) { if (row.length > 0 || cell) { row.push(cell.trim()); rows.push(row); } row = []; cell = ''; if (c === '\r' && n === '\n') i++; } else cell += c; } if (row.length > 0 || cell) { row.push(cell.trim()); rows.push(row); } return rows; }
-    function findBestMatch(t, db) { let b = null, m = Infinity; for (const i of db) { if (i.n === t) return i; if (i.n.includes(t) || t.includes(i.n)) { let d = Math.abs(i.n.length - t.length); if (d < m) { m = d; b = i; } } } return b; }
-    function parseLocationLogic(locStr, db) { const res = { paths: [], points: [] }; locStr.split('+').forEach(block => { if (block.includes('→')) { const chain = block.split('→').map(p => findBestMatch(p.replace(/\(.*?\)/g, '').trim(), db)).filter(p => p); if (chain.length > 1) res.paths.push(chain); chain.forEach(p => res.points.push(p)); } else { const pt = findBestMatch(block.replace(/\(.*?\)/g, '').trim(), db); if (pt) res.points.push(pt); } }); return res; }
-    function renderTable(data) { document.getElementById('table-body').innerHTML = data.map((item, i) => `<tr onclick="selectEvent(${i})"><td width="40" style="padding:10px; border-bottom:1px solid #eee;">${item.id}</td><td style="padding:10px; border-bottom:1px solid #eee;">${item.event}</td></tr>`).join(''); }
-    function updateInfoPanel(item) { document.getElementById('info-area').style.display = 'flex'; document.getElementById('info-title').innerText = item.event; document.getElementById('info-time').innerText = item.time; document.getElementById('info-path').innerText = `地點：${item.loc}`; document.getElementById('info-script').innerText = item.script; document.getElementById('info-note').innerText = item.note; }
-    function handleSearch() { const term = document.getElementById('search-input').value.trim().toLowerCase(); document.getElementById('search-clear').style.display = term ? 'block' : 'none'; filteredData = term ? eventData.filter(item => item._searchStr.includes(term)) : [...eventData]; renderTable(filteredData); }
-    function clearSearch() { document.getElementById('search-input').value = ''; handleSearch(); }
-    function toggleSearch() { const i = document.getElementById('search-input'); i.classList.toggle('open'); if(i.classList.contains('open')) i.focus(); }
+    function parseLocationLogic(locStr, db) {
+        const res = { paths: [], points: [] };
+        locStr.split('+').forEach(block => {
+            if (block.includes('→')) {
+                const chain = block.split('→').map(p => findBestMatch(p.replace(/\(.*?\)/g, '').trim(), db)).filter(p => p);
+                if (chain.length > 1) res.paths.push(chain);
+                chain.forEach(p => res.points.push(p));
+            } else {
+                const pt = findBestMatch(block.replace(/\(.*?\)/g, '').trim(), db);
+                if (pt) res.points.push(pt);
+            }
+        });
+        return res;
+    }
+
+    function parseCSV(t) {
+        const rows = []; let row = [], cell = '', q = false;
+        for (let i = 0; i < t.length; i++) {
+            let c = t[i], n = t[i+1];
+            if (c === '"' && q && n === '"') { cell += '"'; i++; }
+            else if (c === '"') q = !q;
+            else if (c === ',' && !q) { row.push(cell.trim()); cell = ''; }
+            else if ((c === '\n' || c === '\r') && !q) {
+                if (row.length > 0 || cell) { row.push(cell.trim()); rows.push(row); }
+                row = []; cell = ''; if (c === '\r' && n === '\n') i++;
+            } else cell += c;
+        }
+        if (row.length > 0 || cell) { row.push(cell.trim()); rows.push(row); }
+        return rows;
+    }
+
+    function renderTable(data) {
+        const tbody = document.getElementById('table-body');
+        tbody.innerHTML = data.map((item, i) => `<tr onclick="selectEvent(${i})"><td width="40" style="padding:10px; border-bottom:1px solid #eee;">${item.id}</td><td style="padding:10px; border-bottom:1px solid #eee;">${item.event}</td></tr>`).join('');
+    }
+
+    function updateInfoPanel(item) {
+        document.getElementById('info-area').style.display = 'flex';
+        document.getElementById('info-title').innerText = item.event;
+        document.getElementById('info-time').innerText = item.time;
+        document.getElementById('info-path').innerText = `地點：${item.loc}`;
+        document.getElementById('info-script').innerText = item.script;
+        document.getElementById('info-note').innerText = item.note;
+    }
+
+    function toggleFab() { const m = document.getElementById('fab-menu'); m.style.display = m.style.display === 'none' ? 'block' : 'none'; }
     function toggleInfo() { const b = document.getElementById('info-body'), a = document.getElementById('info-arrow'); const open = b.style.display !== 'none'; b.style.display = open ? 'none' : 'block'; a.innerText = open ? '▲' : '▼'; }
     function syncOverlay() { const img = document.getElementById('bg-map'), ov = document.getElementById('overlay-container'); ov.style.width = img.offsetWidth + 'px'; ov.style.height = img.offsetHeight + 'px'; }
     function updateMinScale() { const img = document.getElementById('bg-map'), c = document.getElementById('map-section'); if(!img.offsetWidth) return; const min = Math.max(c.clientWidth/img.offsetWidth, c.clientHeight/img.offsetHeight); pz.setOptions({ minScale: min }); if(pz.getScale() < min) pz.zoom(min); }
-    function applyMarkerStyles() { if (!pz) return; const s = pz.getScale(); document.querySelectorAll('.marker').forEach(m => { m.style.transform = `translate(-50%, -50%) scale(${s > 1 ? 1/s : 1})`; }); }
-    function refreshCollision() {
-        const markers = Array.from(document.querySelectorAll('.marker')), occupied = [];
-        markers.sort((a,b) => (a.classList.contains('highlight')?-1:1));
-        markers.forEach(m => {
-            const label = m.querySelector('.label'), rect = label.getBoundingClientRect();
-            if (occupied.some(o => !(rect.right<o.left || rect.left>o.right || rect.bottom<o.top || rect.top>o.bottom)) && !m.classList.contains('highlight')) {
-                label.style.opacity = "0";
-            } else { label.style.opacity = "1"; occupied.push(rect); }
-        });
+    function resetView() { pz.reset(); applyMarkerStyles(); refreshCollision(); }
+    function flyTo(pts) {
+        const img = document.getElementById('bg-map'), c = document.getElementById('map-section');
+        let tx = 0, ty = 0; pts.forEach(p => { tx += parseFloat(p.x); ty += parseFloat(p.y); });
+        const px = (tx/pts.length/100)*img.offsetWidth, py = (ty/pts.length/100)*img.offsetHeight, sc = pz.getScale();
+        pz.pan((c.clientWidth/2)/sc - px, (c.clientHeight/2)/sc - py, { animate: true });
     }
-    function flyTo(pts) { const img = document.getElementById('bg-map'), c = document.getElementById('map-section'); let tx = 0, ty = 0; pts.forEach(p => { tx += parseFloat(p.x); ty += parseFloat(p.y); }); const px = (tx/pts.length/100)*img.offsetWidth, py = (ty/pts.length/100)*img.offsetHeight, sc = pz.getScale(); pz.pan((c.clientWidth/2)/sc - px, (c.clientHeight/2)/sc - py, { animate: true }); }
+    function navEvent(dir) { selectEvent(currentEventIdx + dir); }
 
     window.onload = async () => {
         const el = document.getElementById('panzoom-element');
         pz = Panzoom(el, { maxScale: 8, contain: 'outside' });
         el.addEventListener('panzoomchange', () => { applyMarkerStyles(); refreshCollision(); });
         document.getElementById('map-section').addEventListener('wheel', pz.zoomWithWheel);
+        
         const res = await fetch(`folder.csv?t=${Date.now()}`);
         const folders = parseCSV(await res.text()).slice(1);
         const select = document.getElementById('folder-select');
-        select.innerHTML = '<option value="">-- 章節 --</option>';
+        select.innerHTML = '<option value="">-- 請選擇史地章節 --</option>';
         folders.forEach(f => { if(f[0]) { const opt = document.createElement('option'); opt.value = f[0]; opt.innerText = f[1] || f[0]; select.appendChild(opt); } });
         const last = localStorage.getItem('lastBibleFolder');
         if (last) { select.value = last; loadProject(last); }
-        initResizers();
+        
+        // 主拉桿 (左右)
+        const rMain = document.getElementById('resizer-main'), side = document.getElementById('side-panel');
+        rMain.onmousedown = (e) => {
+            const startX = e.clientX, startW = side.offsetWidth;
+            document.onmousemove = (ev) => {
+                side.style.width = Math.max(200, startW + (startX - ev.clientX)) + 'px';
+                syncOverlay(); updateMinScale(); refreshCollision();
+            };
+            document.onmouseup = () => document.onmousemove = null;
+        };
+
+        // 詳情區拉桿 (上下)
+        const rInner = document.getElementById('resizer-inner'), info = document.getElementById('info-area');
+        rInner.onmousedown = rInner.ontouchstart = (e) => {
+            e.preventDefault();
+            const startY = e.clientY || e.touches[0].clientY, startH = info.offsetHeight;
+            const moveHandler = (ev) => {
+                const y = ev.clientY || (ev.touches ? ev.touches[0].clientY : 0);
+                info.style.height = Math.max(44, startH + (y - startY)) + 'px';
+            };
+            document.onmousemove = document.ontouchmove = moveHandler;
+            document.onmouseup = document.ontouchend = () => document.onmousemove = document.ontouchmove = null;
+        };
     };
 </script>
 </body>
