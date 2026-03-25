@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V10.7.7</title>
+    <title>亞伯拉罕史地互動地圖 V10.7.a7</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -369,8 +369,8 @@
         const offsetY = (img.offsetHeight * sc - img.offsetHeight) / 2;
 
         // 最終位移量 = 容器中心 - 目標點視覺座標 + 縮放溢出補償
-        const targetX = (c.clientWidth / 2) - (px * sc) + offsetX;
-        const targetY = (c.clientHeight / 2) - (py * sc) + offsetY;
+        const targetX = (c.clientWidth / 2) - (px * 1) + offsetX;
+        const targetY = (c.clientHeight / 2) - (py * 1) + offsetY;
 
         pz.pan(targetX, targetY, { animate: true });
     }
