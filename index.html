@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V10.7.4</title>
+    <title>亞伯拉罕史地互動地圖 V10.7.5</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -358,7 +358,7 @@
         let tx = 0, ty = 0; pts.forEach(p => { tx += parseFloat(p.x); ty += parseFloat(p.y); });
         const px = (tx/pts.length/100)*img.offsetWidth, py = (ty/pts.length/100)*img.offsetHeight;
         const sc = pz.getScale();
-        // V10.7.4 修正：採用 (c.clientWidth / 2) - (px * sc) 公式，邊界保護交由 contain: 'outside' 處理
+        // V10.7.5 修正：在 origin '0 0' 狀態下，確保位移與縮放線性對位
         pz.pan((c.clientWidth / 2) - (px * sc), (c.clientHeight / 2) - (py * sc), { animate: true });
     }
 
@@ -375,7 +375,8 @@
 
     window.onload = async () => {
         const el = document.getElementById('panzoom-element');
-        pz = Panzoom(el, { maxScale: 8, contain: 'outside' });
+        // V10.7.5 修正：強制固定原點於左上角，解決 Panzoom 內部對位補償造成的偏心問題
+        pz = Panzoom(el, { maxScale: 8, contain: 'outside', origin: '0 0' });
         el.addEventListener('panzoomchange', () => { applyMarkerStyles(); refreshCollision(); });
         document.getElementById('map-section').addEventListener('wheel', pz.zoomWithWheel);
         const res = await fetch(`folder.csv?t=${Date.now()}`);
