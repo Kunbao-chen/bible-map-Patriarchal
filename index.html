@@ -121,32 +121,38 @@
         debug.innerText = `Scale: ${sc.toFixed(2)} | MouseImg: ${mouseImgPx}, ${mouseImgPy}px | MouseBox: ${mx.toFixed(0)}, ${my.toFixed(0)} | TargetImg: ${targetInfo}`;
     }
 
-    /* 手術刀協議 V10.7.15: 修正原點偏移補償算法 */
-    function flyTo(pts) {
-        const img = document.getElementById('bg-map'), c = document.getElementById('map-section');
-        if (!img.offsetWidth) return;
-        
-        let tx = 0, ty = 0; 
-        pts.forEach(p => { tx += parseFloat(p.x); ty += parseFloat(p.y); });
-        
-        const px = (tx/pts.length/100) * img.offsetWidth;
-        const py = (ty/pts.length/100) * img.offsetHeight;
-        const sc = pz.getScale();
-        
-        const viewCenterX = c.clientWidth / 2;
-        const viewCenterY = c.clientHeight / 2;
+    /* 手術刀協議 V10.7.16: 修正中心縮放物理偏移補償 */
+function flyTo(pts) {
+    const img = document.getElementById('bg-map'), c = document.getElementById('map-section');
+    if (!img.offsetWidth || !img.naturalWidth) return;
+    
+    // 1. 計算目標點在原始圖片上的中心座標 (px, py)
+    let tx = 0, ty = 0; 
+    pts.forEach(p => { tx += parseFloat(p.x); ty += parseFloat(p.y); });
+    
+    // 使用 naturalWidth (1408) 與 naturalHeight (768) 確保計算基準與地圖檔一致
+    const px = (tx / pts.length / 100) * img.naturalWidth;
+    const py = (ty / pts.length / 100) * img.naturalHeight;
+    
+    const sc = pz.getScale();
+    const viewCenterX = c.clientWidth / 2;
+    const viewCenterY = c.clientHeight / 2;
 
-        // 核心修正：計算 Panzoom 預設中心縮放造成的左上角物理偏移
-        const originOffsetX = (img.offsetWidth * sc - img.offsetWidth) / 2;
-        const originOffsetY = (img.offsetHeight * sc - img.offsetHeight) / 2;
-        
-        const targetX = viewCenterX - (px * sc) + originOffsetX;
-        const targetY = viewCenterY - (py * sc) + originOffsetY;
-        
-        pz.pan(targetX, targetY, { animate: true });
-        
-        setTimeout(updateDebugDisplay, 300);
-    }
+    // 2. 核心物理補償：
+    // Panzoom 以中心縮放時，左上角 (0,0) 會產生 (Width * (1 - Scale) / 2) 的位移
+    // 我們必須減去這個位移量，才能抵銷縮放產生的「中心拉力」
+    const originOffsetX = (img.naturalWidth * (1 - sc)) / 2;
+    const originOffsetY = (img.naturalHeight * (1 - sc)) / 2;
+    
+    // 3. 最終 Pan 座標 = 容器中心 - (目標點比例位置) - 縮放原點偏移
+    const targetX = viewCenterX - (px * sc) - originOffsetX;
+    const targetY = viewCenterY - (py * sc) - originOffsetY;
+    
+    pz.pan(targetX, targetY, { animate: true });
+    
+    // 延遲更新調試信息以確保讀取到最終位置
+    setTimeout(updateDebugDisplay, 300);
+}
 
     function toggleSearch() { const input = document.getElementById('search-input'); const isOpening = !input.classList.contains('open'); input.classList.toggle('open'); if (isOpening) input.focus(); else hideHistory(); }
     function handleSearch(keyword) {
