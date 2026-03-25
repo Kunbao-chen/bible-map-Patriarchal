@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V10.7.13</title>
+    <title>亞伯拉罕史地互動地圖 V10.7.14</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -121,36 +121,27 @@
         debug.innerText = `Scale: ${sc.toFixed(2)} | MouseImg: ${mouseImgPx}, ${mouseImgPy}px | MouseBox: ${mx.toFixed(0)}, ${my.toFixed(0)} | TargetImg: ${targetInfo}`;
     }
 
-    /* 手術刀協議 V10.7.13: 僅更新第一步座標計算公式 */
+    /* 手術刀協議 V10.7.14: 算法退回 V10.7.6 純粹計算 */
     function flyTo(pts) {
         const img = document.getElementById('bg-map'), c = document.getElementById('map-section');
-        if (!img.offsetWidth || !img.offsetHeight) return;
+        if (!img.offsetWidth) return;
         
         let tx = 0, ty = 0; 
-        pts.forEach(p => { 
-            tx += (parseFloat(p.x) / 100 * img.offsetWidth); 
-            ty += (parseFloat(p.y) / 100 * img.offsetHeight); 
-        });
-        const avgPx = tx / pts.length;
-        const avgPy = ty / pts.length;
-
+        pts.forEach(p => { tx += parseFloat(p.x); ty += parseFloat(p.y); });
+        
+        const px = (tx/pts.length/100)*img.offsetWidth;
+        const py = (ty/pts.length/100)*img.offsetHeight;
         const sc = pz.getScale();
-
-        // 核心修正：計算因為 origin:center 縮放產生的圖片物理位移量
-        const offsetX = (img.offsetWidth * sc - img.offsetWidth) / 2;
-        const offsetY = (img.offsetHeight * sc - img.offsetHeight) / 2;
-
-        // 計算目標點在容器中心時，圖片左上角應處於的物理座標
-        const targetX = (c.clientWidth / 2) - (avgPx * sc) + offsetX;
-        const targetY = (c.clientHeight / 2) - (avgPy * sc) + offsetY;
-
-        // 執行 pan，Panzoom 會在第二步自動應用 contain: 'outside'
+        
+        const targetX = (c.clientWidth / 2) - (px * sc);
+        const targetY = (c.clientHeight / 2) - (py * sc);
+        
         pz.pan(targetX, targetY, { animate: true });
         
-        // 移動完成後更新除錯顯示
         setTimeout(updateDebugDisplay, 300);
     }
 
+    // ... 中間功能函式 (toggleSearch, handleSearch, clearSearch, renderVisuals 等) 保持 V10.7.12 邏輯 ...
     function toggleSearch() { const input = document.getElementById('search-input'); const isOpening = !input.classList.contains('open'); input.classList.toggle('open'); if (isOpening) input.focus(); else hideHistory(); }
     function handleSearch(keyword) {
         const input = document.getElementById('search-input');
@@ -252,10 +243,17 @@
 
     window.onload = async () => {
         const el = document.getElementById('panzoom-element'), mapSection = document.getElementById('map-section');
-        pz = Panzoom(el, { maxScale: 8, contain: 'outside' });
+        
+        /* 手術刀協議 V10.7.14: 遮蔽 contain 保護 */
+        pz = Panzoom(el, { 
+            maxScale: 8, 
+            // contain: 'outside' 
+        });
+
         el.addEventListener('panzoomchange', () => { applyMarkerStyles(); refreshCollision(); updateDebugDisplay(); });
         mapSection.addEventListener('mousemove', (e) => updateDebugDisplay(e.clientX, e.clientY));
         mapSection.addEventListener('wheel', pz.zoomWithWheel);
+        
         const res = await fetch(`folder.csv?t=${Date.now()}`); const folders = parseCSV(await res.text()).slice(1);
         const select = document.getElementById('folder-select'); select.innerHTML = '<option value="">-- 請選擇史地章節 --</option>';
         folders.forEach(f => { if(f[0]) { const opt = document.createElement('option'); opt.value = f[0]; opt.innerText = f[1] || f[0]; select.appendChild(opt); } });
