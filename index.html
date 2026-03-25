@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V10.7.12</title>
+    <title>亞伯拉罕史地互動地圖 V10.7.13</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -121,6 +121,36 @@
         debug.innerText = `Scale: ${sc.toFixed(2)} | MouseImg: ${mouseImgPx}, ${mouseImgPy}px | MouseBox: ${mx.toFixed(0)}, ${my.toFixed(0)} | TargetImg: ${targetInfo}`;
     }
 
+    /* 手術刀協議 V10.7.13: 僅更新第一步座標計算公式 */
+    function flyTo(pts) {
+        const img = document.getElementById('bg-map'), c = document.getElementById('map-section');
+        if (!img.offsetWidth || !img.offsetHeight) return;
+        
+        let tx = 0, ty = 0; 
+        pts.forEach(p => { 
+            tx += (parseFloat(p.x) / 100 * img.offsetWidth); 
+            ty += (parseFloat(p.y) / 100 * img.offsetHeight); 
+        });
+        const avgPx = tx / pts.length;
+        const avgPy = ty / pts.length;
+
+        const sc = pz.getScale();
+
+        // 核心修正：計算因為 origin:center 縮放產生的圖片物理位移量
+        const offsetX = (img.offsetWidth * sc - img.offsetWidth) / 2;
+        const offsetY = (img.offsetHeight * sc - img.offsetHeight) / 2;
+
+        // 計算目標點在容器中心時，圖片左上角應處於的物理座標
+        const targetX = (c.clientWidth / 2) - (avgPx * sc) + offsetX;
+        const targetY = (c.clientHeight / 2) - (avgPy * sc) + offsetY;
+
+        // 執行 pan，Panzoom 會在第二步自動應用 contain: 'outside'
+        pz.pan(targetX, targetY, { animate: true });
+        
+        // 移動完成後更新除錯顯示
+        setTimeout(updateDebugDisplay, 300);
+    }
+
     function toggleSearch() { const input = document.getElementById('search-input'); const isOpening = !input.classList.contains('open'); input.classList.toggle('open'); if (isOpening) input.focus(); else hideHistory(); }
     function handleSearch(keyword) {
         const input = document.getElementById('search-input');
@@ -215,19 +245,6 @@
     function findBestMatch(t, db) { let b = null, m = Infinity; for (const i of db) { if (i.n === t) return i; if (i.n.includes(t) || t.includes(i.n)) { let d = Math.abs(i.n.length - t.length); if (d < m) { m = d; b = i; } } } return b; }
     function parseLocationLogic(locStr, db) { const result = { paths: [], points: [] }; locStr.split('+').map(b => b.trim()).forEach(block => { if (block.includes('→')) { const chain = block.split('→').map(p => findBestMatch(p.replace(/\(.*?\)/g, '').trim(), db)).filter(p => p); if (chain.length > 1) result.paths.push(chain); chain.forEach(p => result.points.push(p)); } else { const pt = findBestMatch(block.replace(/\(.*?\)/g, '').trim(), db); if (pt) result.points.push(pt); } }); return result; }
     function applyMarkerStyles() { const s = pz ? pz.getScale() : 1; const anti = s > 1 ? 1 / s : 1; document.querySelectorAll('.marker').forEach(m => { const gain = parseInt(m.dataset.size) || 0; m.querySelector('.label').style.fontSize = (baseMarkerFontSize + (gain * 1.5)) + 'px'; m.style.transform = `translate(-50%, -50%) scale(${anti})`; }); }
-    
-    function flyTo(pts) {
-        const img = document.getElementById('bg-map'), c = document.getElementById('map-section');
-        if (!img.offsetWidth) return;
-        let tx = 0, ty = 0; pts.forEach(p => { tx += parseFloat(p.x); ty += parseFloat(p.y); });
-        const px = (tx/pts.length/100)*img.offsetWidth, py = (ty/pts.length/100)*img.offsetHeight;
-        const sc = pz.getScale();
-        const targetX = (c.clientWidth / 2) - (px * sc);
-        const targetY = (c.clientHeight / 2) - (py * sc);
-        pz.pan(targetX, targetY, { animate: true });
-        updateDebugDisplay();
-    }
-
     function updateMinScale() { const img = document.getElementById('bg-map'), c = document.getElementById('map-section'); if (!img.offsetWidth) return; const min = Math.max(c.clientWidth / img.offsetWidth, c.clientHeight / img.offsetHeight); pz.setOptions({ minScale: min }); if (pz.getScale() < min) pz.zoom(min, { animate: true }); }
     function syncOverlay() { const img = document.getElementById('bg-map'), ov = document.getElementById('overlay-container'); ov.style.width = img.offsetWidth + 'px'; ov.style.height = img.offsetHeight + 'px'; }
     function toggleFab() { const m = document.getElementById('fab-menu'); m.style.display = m.style.display === 'none' ? 'flex' : 'none'; }
