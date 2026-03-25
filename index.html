@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V10.7.14</title>
+    <title>亞伯拉罕史地互動地圖 V10.7.15</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -121,7 +121,7 @@
         debug.innerText = `Scale: ${sc.toFixed(2)} | MouseImg: ${mouseImgPx}, ${mouseImgPy}px | MouseBox: ${mx.toFixed(0)}, ${my.toFixed(0)} | TargetImg: ${targetInfo}`;
     }
 
-    /* 手術刀協議 V10.7.14: 算法退回 V10.7.6 純粹計算 */
+    /* 手術刀協議 V10.7.15: 修正原點偏移補償算法 */
     function flyTo(pts) {
         const img = document.getElementById('bg-map'), c = document.getElementById('map-section');
         if (!img.offsetWidth) return;
@@ -129,19 +129,25 @@
         let tx = 0, ty = 0; 
         pts.forEach(p => { tx += parseFloat(p.x); ty += parseFloat(p.y); });
         
-        const px = (tx/pts.length/100)*img.offsetWidth;
-        const py = (ty/pts.length/100)*img.offsetHeight;
+        const px = (tx/pts.length/100) * img.offsetWidth;
+        const py = (ty/pts.length/100) * img.offsetHeight;
         const sc = pz.getScale();
         
-        const targetX = (c.clientWidth / 2) - (px * sc);
-        const targetY = (c.clientHeight / 2) - (py * sc);
+        const viewCenterX = c.clientWidth / 2;
+        const viewCenterY = c.clientHeight / 2;
+
+        // 核心修正：計算 Panzoom 預設中心縮放造成的左上角物理偏移
+        const originOffsetX = (img.offsetWidth * sc - img.offsetWidth) / 2;
+        const originOffsetY = (img.offsetHeight * sc - img.offsetHeight) / 2;
+        
+        const targetX = viewCenterX - (px * sc) + originOffsetX;
+        const targetY = viewCenterY - (py * sc) + originOffsetY;
         
         pz.pan(targetX, targetY, { animate: true });
         
         setTimeout(updateDebugDisplay, 300);
     }
 
-    // ... 中間功能函式 (toggleSearch, handleSearch, clearSearch, renderVisuals 等) 保持 V10.7.12 邏輯 ...
     function toggleSearch() { const input = document.getElementById('search-input'); const isOpening = !input.classList.contains('open'); input.classList.toggle('open'); if (isOpening) input.focus(); else hideHistory(); }
     function handleSearch(keyword) {
         const input = document.getElementById('search-input');
@@ -244,7 +250,6 @@
     window.onload = async () => {
         const el = document.getElementById('panzoom-element'), mapSection = document.getElementById('map-section');
         
-        /* 手術刀協議 V10.7.14: 遮蔽 contain 保護 */
         pz = Panzoom(el, { 
             maxScale: 8, 
             // contain: 'outside' 
