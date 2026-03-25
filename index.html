@@ -3,67 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V10.7.7</title>
+    <title>亞伯拉罕史地互動地圖 V10.7.8</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
         :root { --gold: #c5a059; --dark: #2c3e50; --brown: #5d4037; --ink-blue: rgba(50, 75, 95, 0.6); --handle-bg: #ddd; }
         * { box-sizing: border-box; }
-        body { 
-            margin: 0; padding: 0; width: 100vw; height: 100dvh; overflow: hidden; 
-            background: #fdf6e3; font-family: "微軟正黑體", "Heiti TC", "Apple LiGothic Medium", sans-serif; 
-        }
-        
+        body { margin: 0; padding: 0; width: 100vw; height: 100dvh; overflow: hidden; background: #fdf6e3; font-family: "微軟正黑體", sans-serif; }
         #app-container { display: flex; width: 100%; height: 100%; flex-direction: row; }
-        @media (max-width: 800px) and (orientation: portrait) {
-            #app-container { flex-direction: column; }
-            #side-panel { width: 100% !important; flex: 0 0 50dvh; }
-        }
-
+        @media (max-width: 800px) and (orientation: portrait) { #app-container { flex-direction: column; } #side-panel { width: 100% !important; flex: 0 0 50dvh; } }
         #map-section { flex: 1; position: relative; overflow: hidden; background: #e5d3b3; }
         #panzoom-element { display: inline-block; position: relative; }
         #bg-map { display: block; max-width: none; user-select: none; }
-        
         .marker { position: absolute; transform-origin: center; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; z-index: 10; cursor: pointer; }
-        .marker .dot { width: 5px; height: 5px; background: rgba(93,64,55,0.5); border-radius: 50%; margin-bottom: 2px; }
-        .marker .label { 
-            opacity: 0; padding: 2px 6px; border-radius: 8px; background: rgba(255,255,255,0.9); 
-            border: 1.5px solid var(--brown); white-space: nowrap; font-weight: bold; font-size: 13px; 
-            color: var(--brown); transition: opacity 0.4s ease-in-out, transform 0.2s ease; pointer-events: none;
-        }
-        .marker.region-type .label { background: none !important; border: none !important; font-family: 'ZCOOL KuaiLe', cursive; color: var(--ink-blue); text-shadow: 0 0 5px #fdf6e3, 0 0 2px #fdf6e3; }
-
+        .marker .dot { width: 5px; height: 5px; background: rgba(93,64,55,0.5); border-radius: 50%; }
+        .marker .label { opacity: 0; padding: 2px 6px; border-radius: 8px; background: rgba(255,255,255,0.9); border: 1.5px solid var(--brown); white-space: nowrap; font-weight: bold; font-size: 13px; color: var(--brown); pointer-events: none; }
         .marker.highlight { z-index: 1000 !important; }
-        .marker.highlight .label { opacity: 1 !important; animation: labelBreathe 0.8s infinite alternate ease-in-out; background: #fffde7 !important; border: 2px solid #d32f2f !important; color: #d32f2f !important; pointer-events: auto !important; }
-        @keyframes labelBreathe { from { transform: translateY(0) scale(1); } to { transform: translateY(-6px) scale(1.05); } }
-
-        .search-container { position: absolute; right: 12px; top: 12px; z-index: 2000; display: flex; flex-direction: column; align-items: flex-end; }
-        .search-bar-wrapper { display: flex; align-items: center; background: rgba(255,255,255,0.4); backdrop-filter: blur(8px); border-radius: 10px; border: 2px solid var(--brown); padding: 2px; }
-        .search-clear { cursor: pointer; display: none; padding: 0 8px; color: var(--brown); font-weight: bold; font-size: 18px; order: -1; }
-        #search-input { width: 0; opacity: 0; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); border: none; background: transparent; height: 32px; outline: none; font-size: 14px; }
+        .marker.highlight .label { opacity: 1 !important; background: #fffde7 !important; border: 2px solid #d32f2f !important; color: #d32f2f !important; }
+        .search-container { position: absolute; right: 12px; top: 12px; z-index: 2000; }
+        #search-input { width: 0; opacity: 0; transition: all 0.4s; border: 2px solid var(--brown); border-radius: 10px; height: 34px; outline: none; }
         #search-input.open { width: 160px; opacity: 1; padding: 0 8px; }
-        .search-btn { width: 34px; height: 34px; cursor: pointer; display: flex; align-items: center; justify-content: center; background: transparent; border: none; }
-
-        #search-history { 
-            display: none; width: 200px; background: white; border: 1px solid #ccc; border-radius: 8px; 
-            margin-top: 5px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); overflow-y: auto; max-height: 30dvh; 
-        }
-        .history-item { padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; cursor: pointer; font-size: 13px; }
-        .history-item:hover { background: #f9f9f9; }
-
-        #resizer-main { background: var(--handle-bg); z-index: 1100; display: flex; align-items: center; justify-content: center; touch-action: none; }
-        @media (min-width: 801px), (orientation: landscape) { #resizer-main { width: 12px; cursor: col-resize; height: 100%; } #resizer-main::after { content: "⋮"; } }
-        @media (max-width: 800px) and (orientation: portrait) { #resizer-main { height: 16px; cursor: row-resize; width: 100%; } #resizer-main::after { content: "⋯"; } }
-        
-        #side-panel { background: white; display: flex; flex-direction: column; overflow: hidden; position: relative; }
-        #info-area { display: none; flex-direction: column; background: #fff; flex: 0 0 45%; min-height: 44px; }
-        #info-header { background: var(--dark); color: white; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; height: 44px; }
-        #resizer-inner { height: 12px; background: #eee; cursor: row-resize; display: flex; align-items: center; justify-content: center; touch-action: none; flex-shrink: 0; border-top: 1px solid #ddd; }
+        #side-panel { background: white; display: flex; flex-direction: column; overflow: hidden; }
         #list-container { flex: 1; overflow-y: auto; }
         tr.active-row td { background: #fffde7; font-weight: bold; border-left: 5px solid var(--gold); }
-
-        .fab-container { position: absolute; left: 12px; top: 12px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; }
-        .fab-main { width: 42px; height: 42px; background: rgba(255,255,255,0.4); backdrop-filter: blur(8px); border: 2px solid var(--brown); border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
     </style>
 </head>
 <body>
@@ -71,23 +33,9 @@
 <div id="app-container">
     <div id="map-section">
         <div class="search-container">
-            <div class="search-bar-wrapper">
-                <div id="search-clear" class="search-clear" onclick="clearSearch()">×</div>
-                <input type="text" id="search-input" placeholder="搜尋..." oninput="handleSearch()" onfocus="showHistory()">
-                <button class="search-btn" onclick="toggleSearch()"><svg viewBox="0 0 24 24" width="20" fill="#5d4037"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg></button>
-            </div>
-            <div id="search-history"></div>
+            <input type="text" id="search-input" placeholder="搜尋..." oninput="handleSearch()">
+            <button onclick="toggleSearch()" style="background:none; border:none; cursor:pointer;">🔍</button>
         </div>
-        
-        <div class="fab-container">
-            <button class="fab-main" onclick="toggleFab()"><svg viewBox="0 0 24 24" width="22" fill="#5d4037"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg></button>
-            <div id="fab-menu" class="fab-menu" style="display:none; flex-direction:column; gap:6px;">
-                <button class="fab-item" onclick="pz.zoomIn()" style="width:34px; height:34px; border-radius:10px;">+</button>
-                <button class="fab-item" onclick="pz.zoomOut()" style="width:34px; height:34px; border-radius:10px;">-</button>
-                <button class="fab-item" onclick="resetView()" style="width:34px; height:34px; border-radius:10px;">↺</button>
-            </div>
-        </div>
-
         <div id="panzoom-element">
             <img src="" id="bg-map">
             <div id="overlay-container" style="position:absolute; top:0; left:0; pointer-events:none;">
@@ -96,82 +44,29 @@
             </div>
         </div>
     </div>
-    
-    <div id="resizer-main"></div>
-    
     <div id="side-panel">
-        <div id="folder-nav"><select id="folder-select" onchange="loadProject(this.value)" style="width:100%; padding:8px;"><option value="">載入中...</option></select></div>
-        <div id="info-area">
-            <div id="info-header" onclick="toggleInfo()"><div>📜 詳情 <span id="info-arrow">▼</span></div><div style="display:flex; gap:10px;"><button onclick="navEvent(-1); event.stopPropagation();">◀</button><button onclick="navEvent(1); event.stopPropagation();">▶</button></div></div>
-            <div id="info-body" style="padding:15px; overflow-y:auto; flex:1;">
-                <div id="info-time" style="color:#888;"></div>
-                <h3 id="info-title" style="color:var(--gold); margin:5px 0;"></h3>
-                <div id="info-path" style="background:#f9f9f9; padding:8px; border-radius:4px; margin:5px 0; font-weight:bold;"></div>
-                <p id="info-script" style="color:#2980b9;"></p>
-                <div id="info-note"></div>
-            </div>
-        </div>
-        <div id="resizer-inner"></div>
+        <select id="folder-select" onchange="loadProject(this.value)" style="width:100%; padding:10px;"><option value="">載入中...</option></select>
         <div id="list-container"><table><tbody id="table-body"></tbody></table></div>
     </div>
 </div>
 
 <script>
-    let pz, eventData = [], filteredData = [], allCoords = [], locFreq = {}, currentFolder = '', currentMapIdx = -1, currentEventIdx = -1, baseMarkerFontSize = 13;
-    let searchHistory = JSON.parse(localStorage.getItem('bibleSearchHistory') || '[]');
+    let pz, eventData = [], filteredData = [], allCoords = [], currentFolder = '', currentMapIdx = -1, currentEventIdx = -1;
 
-    function toggleSearch() {
-        const input = document.getElementById('search-input');
-        const isOpening = !input.classList.contains('open');
-        input.classList.toggle('open');
-        if (isOpening) { input.focus(); } else { hideHistory(); }
-    }
+    function toggleSearch() { const i = document.getElementById('search-input'); i.classList.toggle('open'); i.focus(); }
 
-    function handleSearch(keyword) {
-        const input = document.getElementById('search-input');
-        const term = (keyword !== undefined ? keyword : input.value).trim().toLowerCase();
-        const clearBtn = document.getElementById('search-clear');
-        clearBtn.style.display = term ? 'block' : 'none';
-        if (!term) { filteredData = [...eventData]; } else {
-            const safeTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const regex = new RegExp(safeTerm, 'gi');
-            filteredData = eventData.map(item => ({ ...item, score: (item._searchStr.match(regex) || []).length })).filter(item => item.score > 0).sort((a, b) => b.score - a.score);
-        }
+    function handleSearch() {
+        const term = document.getElementById('search-input').value.trim().toLowerCase();
+        filteredData = term ? eventData.filter(item => item._searchStr.includes(term)) : [...eventData];
         renderTable(filteredData);
-        if (term && keyword === undefined) saveHistory(term);
-        if (term && filteredData.length > 0) { selectEvent(0); document.getElementById('list-container').scrollTop = 0; }
+        if (filteredData.length > 0) selectEvent(0);
     }
 
-    function clearSearch() {
-        const lastId = currentEventIdx !== -1 ? filteredData[currentEventIdx].id : null;
-        const input = document.getElementById('search-input');
-        input.value = ''; input.classList.remove('open');
-        document.getElementById('search-clear').style.display = 'none';
-        hideHistory(); handleSearch(""); 
-        if (lastId) {
-            const newIdx = filteredData.findIndex(d => d.id === lastId);
-            if (newIdx !== -1) { selectEvent(newIdx); const r = document.getElementById('table-body').rows[newIdx]; if(r) r.scrollIntoView({block:'center'}); }
-        }
-    }
-
-    function saveHistory(term) { if (!term.trim()) return; searchHistory = [term, ...searchHistory.filter(h => h !== term)].slice(0, 10); localStorage.setItem('bibleSearchHistory', JSON.stringify(searchHistory)); renderHistory(); }
-    function renderHistory() { document.getElementById('search-history').innerHTML = searchHistory.map(h => `<div class="history-item" onclick="useHistory('${h}')"><span>${h}</span><span style="color:#ccc" onclick="deleteHistory(event, '${h}')">×</span></div>`).join(''); }
-    function useHistory(h) { document.getElementById('search-input').value = h; handleSearch(h); hideHistory(); }
-    function deleteHistory(e, h) { e.stopPropagation(); searchHistory = searchHistory.filter(item => item !== h); localStorage.setItem('bibleSearchHistory', JSON.stringify(searchHistory)); renderHistory(); }
-    function showHistory() { if(searchHistory.length) document.getElementById('search-history').style.display = 'block'; renderHistory(); }
-    function hideHistory() { document.getElementById('search-history').style.display = 'none'; }
-
-    function selectEvent(idxInFiltered) {
-        if (idxInFiltered < 0 || idxInFiltered >= filteredData.length) return;
-        currentEventIdx = idxInFiltered;
-        const item = filteredData[idxInFiltered];
-        Array.from(document.getElementById('table-body').rows).forEach((r, i) => r.className = i === idxInFiltered ? 'active-row' : '');
+    function selectEvent(idx) {
+        currentEventIdx = idx;
+        const item = filteredData[idx];
+        Array.from(document.getElementById('table-body').rows).forEach((r, i) => r.className = i === idx ? 'active-row' : '');
         updateMapAndInfo(item);
-    }
-
-    function navEvent(step) {
-        const nextIdx = currentEventIdx + step;
-        if (nextIdx >= 0 && nextIdx < filteredData.length) { selectEvent(nextIdx); const r = document.getElementById('table-body').rows[nextIdx]; if(r) r.scrollIntoView({behavior:'smooth', block:'center'}); }
     }
 
     async function updateMapAndInfo(item) {
@@ -189,15 +84,31 @@
         }
         const mapData = allCoords.filter(c => c.mapIdx === targetMapIdx);
         renderVisuals(mapData, parseLocationLogic(item.loc, mapData));
-        updateInfoPanel(item);
+    }
+
+    function flyTo(pts) {
+        const img = document.getElementById('bg-map'), c = document.getElementById('map-section');
+        if (!img.offsetWidth) return;
+        
+        let tx = 0, ty = 0; pts.forEach(p => { tx += parseFloat(p.x); ty += parseFloat(p.y); });
+        const px = (tx/pts.length/100) * img.offsetWidth;
+        const py = (ty/pts.length/100) * img.offsetHeight;
+        
+        const sc = pz.getScale();
+        const centerX = img.offsetWidth / 2;
+        const centerY = img.offsetHeight / 2;
+
+        // V10.7.8 簡約補償：計算目標點與圖片中心的距離，以此作為 pan 的位移量
+        // 這能自動對齊 Panzoom 的 origin: center 邏輯
+        const dx = (centerX - px) * sc;
+        const dy = (centerY - py) * sc;
+
+        pz.pan(dx, dy, { animate: true });
     }
 
     function renderVisuals(db, logic) {
         const ml = document.getElementById('marker-layer'), sl = document.getElementById('svg-layer');
-        sl.innerHTML = '';
-        logic.points.forEach(p => {
-             // 確保所有標註點都被渲染
-        });
+        sl.innerHTML = ''; ml.innerHTML = '';
         logic.paths.forEach(path => {
             for (let i = 0; i < path.length - 1; i++) {
                 const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
@@ -207,199 +118,73 @@
                 sl.appendChild(line);
             }
         });
-        const existingMarkers = Array.from(ml.querySelectorAll('.marker'));
-        const newPointNames = db.map(d => d.n);
-        existingMarkers.forEach(m => { if (!newPointNames.includes(m.dataset.name)) m.remove(); });
         db.forEach(data => {
             const isH = logic.points.some(p => p.n === data.n);
-            let m = ml.querySelector(`.marker[data-name="${data.n}"]`);
-            if (!m) {
-                m = document.createElement('div'); m.className = 'marker'; m.dataset.name = data.n;
-                m.innerHTML = `<div class="dot"></div><div class="label">${data.n}</div>`;
-                m.onclick = (e) => { e.stopPropagation(); const input = document.getElementById('search-input'); input.classList.add('open'); input.value = data.n; handleSearch(data.n); };
-                ml.appendChild(m);
-            }
-            m.className = `marker ${isH ? 'highlight' : ''} ${data.size > 2 ? 'region-type' : ''}`;
-            m.style.left = data.x + '%'; m.style.top = data.y + '%'; m.dataset.size = data.size;
+            const m = document.createElement('div');
+            m.className = `marker ${isH ? 'highlight' : ''}`;
+            m.style.left = data.x + '%'; m.style.top = data.y + '%';
+            m.innerHTML = `<div class="dot"></div><div class="label">${data.n}</div>`;
+            ml.appendChild(m);
         });
-        applyMarkerStyles();
         if (logic.points.length) flyTo(logic.points);
-        setTimeout(refreshCollision, 60); 
-    }
-
-    function refreshCollision() {
-        const markers = Array.from(document.querySelectorAll('.marker'));
-        markers.sort((a, b) => (a.classList.contains('highlight') ? -1 : 1));
-        const occupied = [];
-        markers.forEach(m => {
-            const label = m.querySelector('.label');
-            const rect = label.getBoundingClientRect();
-            const isOverlap = occupied.some(o => !(rect.right<o.left || rect.left>o.right || rect.bottom<o.top || rect.top>o.bottom));
-            if (isOverlap && !m.classList.contains('highlight')) { label.style.opacity = "0"; m.style.pointerEvents = "none"; } 
-            else { label.style.opacity = "1"; m.style.pointerEvents = "auto"; occupied.push(rect); }
-        });
-    }
-
-    function initResizers() {
-        const rMain = document.getElementById('resizer-main'), side = document.getElementById('side-panel');
-        const rInner = document.getElementById('resizer-inner'), info = document.getElementById('info-area');
-        let startX, startY, startW, startH;
-        rMain.onmousedown = rMain.ontouchstart = (e) => {
-            e.preventDefault();
-            const pointerX = e.clientX || (e.touches ? e.touches[0].clientX : 0);
-            const pointerY = e.clientY || (e.touches ? e.touches[0].clientY : 0);
-            startX = pointerX; startY = pointerY; startW = side.offsetWidth; startH = side.offsetHeight;
-            window.onmousemove = window.ontouchmove = (ev) => {
-                const x = ev.clientX || (ev.touches ? ev.touches[0].clientX : 0);
-                const y = ev.clientY || (ev.touches ? ev.touches[0].clientY : 0);
-                if (window.innerWidth < window.innerHeight && window.matchMedia("(orientation: portrait)").matches) { side.style.flex = `0 0 ${Math.max(100, Math.min(startH + (startY - y), window.innerHeight * 0.8))}px`; } 
-                else { side.style.flex = "none"; side.style.width = `${Math.max(200, Math.min(startW + (startX - x), window.innerWidth * 0.7))}px`; }
-                syncOverlay(); updateMinScale(); refreshCollision();
-            };
-            window.onmouseup = window.ontouchend = () => { window.onmousemove = window.ontouchmove = null; };
-        };
-        rInner.onmousedown = rInner.ontouchstart = (e) => {
-            e.preventDefault();
-            startY = e.clientY || (e.touches ? e.touches[0].clientY : 0);
-            startH = info.offsetHeight;
-            window.onmousemove = window.ontouchmove = (ev) => {
-                const y = ev.clientY || (ev.touches ? ev.touches[0].clientY : 0);
-                info.style.flex = `0 0 ${Math.max(44, Math.min(startH + (y - startY), side.offsetHeight * 0.9))}px`;
-            };
-            window.onmouseup = window.ontouchend = () => { window.onmousemove = window.ontouchmove = null; };
-        };
-    }
-
-    function renderTable(data) {
-        const tbody = document.getElementById('table-body');
-        tbody.innerHTML = '';
-        data.forEach((item, i) => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `<td width="40" style="padding:12px; border-bottom:1px solid #eee;">${item.id}</td><td style="padding:12px; border-bottom:1px solid #eee;">${item.event}</td>`;
-            tr.onclick = () => selectEvent(i);
-            tbody.appendChild(tr);
-        });
-    }
-
-    function updateInfoPanel(item) {
-        document.getElementById('info-area').style.display = 'flex';
-        document.getElementById('info-title').innerText = item.event;
-        document.getElementById('info-time').innerText = item.time;
-        document.getElementById('info-path').innerText = `地點：${item.loc}`;
-        document.getElementById('info-script').innerText = item.script;
-        document.getElementById('info-note').innerText = item.note;
-    }
-
-    function toggleInfo() {
-        const body = document.getElementById('info-body'), arrow = document.getElementById('info-arrow'), area = document.getElementById('info-area');
-        if (body.style.display === 'none') { body.style.display = 'block'; area.style.flex = "0 0 45%"; arrow.innerText = '▼'; }
-        else { body.style.display = 'none'; area.style.flex = "0 0 44px"; arrow.innerText = '▲'; }
-    }
-
-    function parseCSV(t) {
-        const rows = []; let row = [], cell = '', q = false;
-        for (let i = 0; i < t.length; i++) {
-            let c = t[i], n = t[i+1];
-            if (c === '"' && q && n === '"') { cell += '"'; i++; } else if (c === '"') q = !q; else if (c === ',' && !q) { row.push(cell.trim()); cell = ''; }
-            else if ((c === '\n' || c === '\r') && !q) { if (row.length > 0 || cell) { row.push(cell.trim()); rows.push(row); } row = []; cell = ''; if (c === '\r' && n === '\n') i++; } else cell += c;
-        }
-        if (row.length > 0 || cell) { row.push(cell.trim()); rows.push(row); }
-        return rows;
-    }
-
-    async function loadProject(folder) {
-        if (!folder) return;
-        currentFolder = folder; localStorage.setItem('lastBibleFolder', folder);
-        allCoords = [];
-        const dRes = await fetch(`${folder}/data.csv?t=${Date.now()}`);
-        eventData = parseCSV(await dRes.text()).slice(1).filter(r => r.length > 2).map(r => {
-            const obj = { id:r[0], time:r[1], event:r[2], loc:r[3], script:r[4], note:r[5] };
-            obj._searchStr = Object.values(obj).join(' ').toLowerCase();
-            return obj;
-        });
-        filteredData = [...eventData]; renderTable(filteredData);
-        for (let x = 1; x <= 15; x++) {
-            try {
-                const cRes = await fetch(`${folder}/coords-${x}.csv?t=${Date.now()}`);
-                if (!cRes.ok) break;
-                parseCSV(await cRes.text()).slice(1).forEach(r => { if(r[1] && r[5]) allCoords.push({ n: r[1].trim(), x: r[5], y: r[6], mapIdx: x, size: parseInt(r[7])||0 }); });
-            } catch(e) { break; }
-        }
-        if(filteredData.length > 0) selectEvent(0);
-    }
-
-    function findBestMatch(t, db) {
-        let b = null, m = Infinity;
-        for (const i of db) { if (i.n === t) return i; if (i.n.includes(t) || t.includes(i.n)) { let d = Math.abs(i.n.length - t.length); if (d < m) { m = d; b = i; } } }
-        return b;
-    }
-
-    function parseLocationLogic(locStr, db) {
-        const result = { paths: [], points: [] };
-        locStr.split('+').map(b => b.trim()).forEach(block => {
-            if (block.includes('→')) {
-                const chain = block.split('→').map(p => findBestMatch(p.replace(/\(.*?\)/g, '').trim(), db)).filter(p => p);
-                if (chain.length > 1) result.paths.push(chain); chain.forEach(p => result.points.push(p));
-            } else { const pt = findBestMatch(block.replace(/\(.*?\)/g, '').trim(), db); if (pt) result.points.push(pt); }
-        });
-        return result;
-    }
-
-    function applyMarkerStyles() {
-        const s = pz ? pz.getScale() : 1;
-        const anti = s > 1 ? 1 / s : 1;
-        document.querySelectorAll('.marker').forEach(m => {
-            const gain = parseInt(m.dataset.size) || 0;
-            m.querySelector('.label').style.fontSize = (baseMarkerFontSize + (gain * 1.5)) + 'px';
-            m.style.transform = `translate(-50%, -50%) scale(${anti})`;
-        });
-    }
-
-    function flyTo(pts) {
-        const img = document.getElementById('bg-map'), c = document.getElementById('map-section');
-        if (!img.offsetWidth) return;
-        let tx = 0, ty = 0; pts.forEach(p => { tx += parseFloat(p.x); ty += parseFloat(p.y); });
-        
-        const px = (tx/pts.length/100)*img.offsetWidth, py = (ty/pts.length/100)*img.offsetHeight;
-        const sc = pz.getScale();
-
-        // V10.7.7 修正公式：針對 origin: center 的偏移補償
-        // 當圖片以中心縮放時，左上角的座標會往左上(負方向)推移
-        const offsetX = (img.offsetWidth * sc - img.offsetWidth) / 2;
-        const offsetY = (img.offsetHeight * sc - img.offsetHeight) / 2;
-
-        // 最終位移量 = 容器中心 - 目標點視覺座標 + 縮放溢出補償
-        const targetX = (c.clientWidth / 2) - (px * sc) + offsetX;
-        const targetY = (c.clientHeight / 2) - (py * sc) + offsetY;
-
-        pz.pan(targetX, targetY, { animate: true });
     }
 
     function updateMinScale() {
         const img = document.getElementById('bg-map'), c = document.getElementById('map-section');
-        if (!img.offsetWidth) return;
         const min = Math.max(c.clientWidth / img.offsetWidth, c.clientHeight / img.offsetHeight);
-        pz.setOptions({ minScale: min }); if (pz.getScale() < min) pz.zoom(min, { animate: true });
+        pz.setOptions({ minScale: min });
+        if (pz.getScale() < min) pz.zoom(min);
     }
 
-    function syncOverlay() { const img = document.getElementById('bg-map'), ov = document.getElementById('overlay-container'); ov.style.width = img.offsetWidth + 'px'; ov.style.height = img.offsetHeight + 'px'; }
-    function toggleFab() { const m = document.getElementById('fab-menu'); m.style.display = m.style.display === 'none' ? 'flex' : 'none'; }
-    function resetView() { pz.reset(); applyMarkerStyles(); refreshCollision(); }
+    function syncOverlay() {
+        const img = document.getElementById('bg-map'), ov = document.getElementById('overlay-container');
+        ov.style.width = img.offsetWidth + 'px'; ov.style.height = img.offsetHeight + 'px';
+    }
+
+    function parseCSV(t) { return t.split('\n').map(row => row.split(',').map(c => c.trim().replace(/^"|"$/g, ''))); }
+    function findBestMatch(t, db) { return db.find(i => i.n === t) || db.find(i => i.n.includes(t)) || null; }
+    function parseLocationLogic(locStr, db) {
+        const res = { paths: [], points: [] };
+        locStr.split('+').forEach(b => {
+            if (b.includes('→')) {
+                const chain = b.split('→').map(p => findBestMatch(p.trim(), db)).filter(p => p);
+                if (chain.length > 1) res.paths.push(chain);
+                chain.forEach(p => res.points.push(p));
+            } else { const pt = findBestMatch(b.trim(), db); if (pt) res.points.push(pt); }
+        });
+        return res;
+    }
+
+    async function loadProject(folder) {
+        if (!folder) return; currentFolder = folder; allCoords = [];
+        const dRes = await fetch(`${folder}/data.csv`);
+        eventData = parseCSV(await dRes.text()).slice(1).filter(r => r.length > 2).map(r => ({ id:r[0], event:r[2], loc:r[3], _searchStr:(r[2]+r[3]).toLowerCase() }));
+        filteredData = [...eventData]; renderTable(filteredData);
+        for (let x = 1; x <= 15; x++) {
+            const cRes = await fetch(`${folder}/coords-${x}.csv`);
+            if (!cRes.ok) break;
+            parseCSV(await cRes.text()).slice(1).forEach(r => { if(r[1]) allCoords.push({ n:r[1], x:r[5], y:r[6], mapIdx:x }); });
+        }
+        selectEvent(0);
+    }
+
+    function renderTable(data) {
+        const tb = document.getElementById('table-body'); tb.innerHTML = '';
+        data.forEach((item, i) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td style="padding:10px;">${item.id}</td><td>${item.event}</td>`;
+            tr.onclick = () => selectEvent(i);
+            tb.appendChild(tr);
+        });
+    }
 
     window.onload = async () => {
-        const el = document.getElementById('panzoom-element');
-        // 恢復預設 Origin 以確保 contain: 'outside' 運算正常
-        pz = Panzoom(el, { maxScale: 8, contain: 'outside' });
-        el.addEventListener('panzoomchange', () => { applyMarkerStyles(); refreshCollision(); });
-        document.getElementById('map-section').addEventListener('wheel', pz.zoomWithWheel);
-        
-        const res = await fetch(`folder.csv?t=${Date.now()}`);
+        pz = Panzoom(document.getElementById('panzoom-element'), { maxScale: 8, contain: 'outside' });
+        const res = await fetch(`folder.csv`);
         const folders = parseCSV(await res.text()).slice(1);
         const select = document.getElementById('folder-select');
-        select.innerHTML = '<option value="">-- 請選擇史地章節 --</option>';
-        folders.forEach(f => { if(f[0]) { const opt = document.createElement('option'); opt.value = f[0]; opt.innerText = f[1] || f[0]; select.appendChild(opt); } });
-        const last = localStorage.getItem('lastBibleFolder'); if (last) { select.value = last; loadProject(last); }
-        initResizers();
+        folders.forEach(f => { if(f[0]) { const o = document.createElement('option'); o.value = f[0]; o.innerText = f[1] || f[0]; select.appendChild(o); } });
+        if (folders[1]) { select.value = folders[1][0]; loadProject(folders[1][0]); }
     };
 </script>
 </body>
