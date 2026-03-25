@@ -359,7 +359,7 @@
         const px = (tx/pts.length/100)*img.offsetWidth, py = (ty/pts.length/100)*img.offsetHeight;
         const sc = pz.getScale();
         // V10.7.4 修正：採用 (c.clientWidth / 2) - (px * sc) 公式，邊界保護交由 contain: 'outside' 處理
-        pz.pan((c.clientWidth / 2) - (px * sc), (c.clientHeight / 2) - (py * sc), { animate: true });
+        pz.pan((c.clientWidth / 2) - (px * 1), (c.clientHeight / 2) - (py * 1), { animate: true });
     }
 
     function updateMinScale() {
