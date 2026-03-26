@@ -21,14 +21,16 @@
         }
 
         #map-section { flex: 1; position: relative; overflow: hidden; background: #e5d3b3; }
+        
+        /* 10.8.0b 根源修正：統一使用左上角座標系 */
         #panzoom-element { 
             display: inline-block; 
             position: relative; 
             transform-origin: 0 0 !important; 
         }
+        
         #bg-map { display: block; max-width: none; user-select: none; }
         
-        /* 標籤樣式 */
         .marker { position: absolute; transform-origin: center; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; z-index: 10; cursor: pointer; }
         .marker .dot { width: 5px; height: 5px; background: rgba(93,64,55,0.5); border-radius: 50%; margin-bottom: 2px; }
         .marker .label { 
@@ -42,7 +44,6 @@
         .marker.highlight .label { opacity: 1 !important; animation: labelBreathe 0.8s infinite alternate ease-in-out; background: #fffde7 !important; border: 2px solid #d32f2f !important; color: #d32f2f !important; pointer-events: auto !important; }
         @keyframes labelBreathe { from { transform: translateY(0) scale(1); } to { transform: translateY(-6px) scale(1.05); } }
 
-        /* 搜尋介面 */
         .search-container { position: absolute; right: 12px; top: 12px; z-index: 2000; display: flex; flex-direction: column; align-items: flex-end; }
         .search-bar-wrapper { display: flex; align-items: center; background: rgba(255,255,255,0.4); backdrop-filter: blur(8px); border-radius: 10px; border: 2px solid var(--brown); padding: 2px; }
         .search-clear { cursor: pointer; display: none; padding: 0 8px; color: var(--brown); font-weight: bold; font-size: 18px; order: -1; }
@@ -348,7 +349,6 @@ function flyTo(pts) {
     const img = document.getElementById('bg-map'), c = document.getElementById('map-section');
     if (!img.offsetWidth) return;
     
-    // 計算目標點像素
     let tx = 0, ty = 0;
     pts.forEach(p => { tx += parseFloat(p.x); ty += parseFloat(p.y); });
     const px = (tx / pts.length / 100) * img.offsetWidth;
@@ -361,7 +361,7 @@ function flyTo(pts) {
     
     pz.pan(finalX, finalY, { animate: true });
 
-    // 除錯資訊更新 (維持原格式)
+    // 完全保留原有的除錯資訊更新邏輯與格式
     setTimeout(() => {
         const panAfter = pz.getPan();
         const containerXAfter = (px * sc) + panAfter.x;
@@ -389,10 +389,16 @@ function flyTo(pts) {
     function toggleFab() { const m = document.getElementById('fab-menu'); m.style.display = m.style.display === 'none' ? 'flex' : 'none'; }
     function resetView() { pz.reset(); applyMarkerStyles(); refreshCollision(); }
 
+    /* V10.8.0b 最終行為修正：鎖定線性座標系，恢復視覺中心縮放感 */
     window.onload = async () => {
         const el = document.getElementById('panzoom-element');
-        // --- 10.8.0b 變動：暫時關閉 contain: 'outside' ---
-        pz = Panzoom(el, { maxScale: 8, contain: false });
+        
+        // --- 10.8.0b 變動：加入 origin: '0 0' 參數以在線性座標系下補償縮放中心感 ---
+        pz = Panzoom(el, { 
+            maxScale: 8, 
+            contain: false,
+            origin: '0 0' 
+        });
         
         el.addEventListener('panzoomchange', () => { 
             applyMarkerStyles(); 
