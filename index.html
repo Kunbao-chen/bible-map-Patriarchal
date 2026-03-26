@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V10.8.0d</title>
+    <title>亞伯拉罕史地互動地圖 V10.8.0e</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -22,11 +22,10 @@
 
         #map-section { flex: 1; position: relative; overflow: hidden; background: #e5d3b3; }
         
-        /* V10.8.0d 座標系：鎖定左上角原點，以實現 Google Maps 式線性 FlyTo */
+        /* V10.8.0e 恢復原生基準點，刪除強制 transform-origin */
         #panzoom-element { 
             display: inline-block; 
             position: relative; 
-            transform-origin: 0 0 !important; 
         }
         
         #bg-map { display: block; max-width: none; user-select: none; }
@@ -261,7 +260,7 @@
             window.onmouseup = window.ontouchend = () => { window.onmousemove = window.ontouchmove = null; };
         };
         rInner.onmousedown = rInner.ontouchstart = (e) => {
-            e.preventDefault(); startY = e.clientY || (e.touches ? e.touches[0].穩定性 : 0); startH = info.offsetHeight;
+            e.preventDefault(); startY = e.clientY || (e.touches ? e.touches[0].clientY : 0); startH = info.offsetHeight;
             window.onmousemove = window.ontouchmove = (ev) => { const y = ev.clientY || (ev.touches ? ev.touches[0].clientY : 0); info.style.flex = `0 0 ${Math.max(44, Math.min(startH + (y - startY), side.offsetHeight * 0.9))}px`; };
             window.onmouseup = window.ontouchend = () => { window.onmousemove = window.ontouchmove = null; };
         };
@@ -344,31 +343,44 @@
         });
     }
 
-/* V10.8.0d：仿照 Google Maps 線性座標邏輯，確保 FlyTo 絕對再現精準 */
+/* V10.8.0e：基於 50% 50% 基準點的絕對仿射對位 */
 function flyTo(pts) {
-    const img = document.getElementById('bg-map'), c = document.getElementById('map-section');
+    const el = document.getElementById('panzoom-element');
+    const img = document.getElementById('bg-map');
+    const c = document.getElementById('map-section');
     if (!img.offsetWidth) return;
     
-    // 1. 計算多點中心之原始像素座標 (0~1 比例)
+    // 1. 計算目標點在原始圖片上的像素座標 (0~1 比例)
     let tx = 0, ty = 0;
     pts.forEach(p => { tx += parseFloat(p.x); ty += parseFloat(p.y); });
     const px = (tx / pts.length / 100) * img.offsetWidth;
     const py = (ty / pts.length / 100) * img.offsetHeight;
+
     const sc = pz.getScale();
 
-    // 2. 線性絕對公式：Pan = (容器中心) - (目標原始座標 * 目前縮放倍率)
-    // 此公式僅在 origin: 0 0 條件下成立
-    const finalX = (c.clientWidth / 2) - (px * sc);
-    const finalY = (c.clientHeight / 2) - (py * sc);
-    
+    // 2. 取得元素的原始中心點 (Panzoom 預設的 transform-origin 是 50% 50%)
+    const originX = el.offsetWidth / 2;
+    const originY = el.offsetHeight / 2;
+
+    // 3. 仿射變換：計算目標點在放大 sc 倍後，相對於元素內部的實際位置
+    const scaledPx = originX + (px - originX) * sc;
+    const scaledPy = originY + (py - originY) * sc;
+
+    // 4. 計算容器中心 (我們希望目標點對齊的地方)
+    const targetX = c.clientWidth / 2;
+    const targetY = c.clientHeight / 2;
+
+    // 5. 兩者的差值即為所需的絕對平移量
+    const finalX = targetX - scaledPx;
+    const finalY = targetY - scaledPy;
+
     pz.pan(finalX, finalY, { animate: true });
 
     setTimeout(() => {
-        const pan = pz.getPan();
-        const screenPos = (px * sc) + pan.x;
+        const panAfter = pz.getPan();
         const debugEl = document.getElementById('debug-info');
         if (debugEl) {
-            debugEl.innerText = `Scale: ${sc.toFixed(2)} | 目標x: ${px.toFixed(0)} | 實時中心: ${screenPos.toFixed(0)}`;
+            debugEl.innerText = `Scale: ${sc.toFixed(2)} | 目標: (${px.toFixed(0)}, ${py.toFixed(0)}) | Pan: (${panAfter.x.toFixed(0)}, ${panAfter.y.toFixed(0)})`;
         }
     }, 350);
 }
@@ -389,26 +401,31 @@ function flyTo(pts) {
     function toggleFab() { const m = document.getElementById('fab-menu'); m.style.display = m.style.display === 'none' ? 'flex' : 'none'; }
     function resetView() { pz.reset(); applyMarkerStyles(); refreshCollision(); }
 
-    /* V10.8.0d 新增：強製以容器中心為焦點的縮放 */
+    /* V10.8.0e 新增：強制以 viewport 絕對座標為焦點的縮放函數 */
     function zoomFromCenter(isZoomIn) {
         const c = document.getElementById('map-section');
-        const focalX = c.clientWidth / 2;
-        const focalY = c.clientHeight / 2;
+        const rect = c.getBoundingClientRect(); // 取得容器在視窗中的絕對位置
+        
+        // 將中心點轉換為相對於瀏覽器視窗 (viewport) 的事件座標
+        const focalX = rect.left + (rect.width / 2);
+        const focalY = rect.top + (rect.height / 2);
+        
+        const opts = { animate: true, focal: { clientX: focalX, clientY: focalY } };
         if (isZoomIn) {
-            pz.zoomIn({ animate: true, focal: { clientX: focalX, clientY: focalY } });
+            pz.zoomIn(opts);
         } else {
-            pz.zoomOut({ animate: true, focal: { clientX: focalX, clientY: focalY } });
+            pz.zoomOut(opts);
         }
     }
 
-    /* V10.8.0d 最終行為：鎖定線性 0,0 基準點，透過 focal 參數實現多點縮放中心 */
+    /* V10.8.0e 最終行為修正：回歸原生縮放邏輯 */
     window.onload = async () => {
         const el = document.getElementById('panzoom-element');
         
+        // 移除強制 origin，讓縮放可以順暢跟隨滑鼠焦點
         pz = Panzoom(el, { 
             maxScale: 8, 
-            contain: false,
-            origin: '0 0' // 維持線性座標系的基石
+            contain: false
         });
         
         el.addEventListener('panzoomchange', () => { 
@@ -417,8 +434,7 @@ function flyTo(pts) {
             const pan = pz.getPan();
             document.getElementById('debug-info').innerText = `Scale: ${pz.getScale().toFixed(2)} | PanX: ${pan.x.toFixed(2)} | PanY: ${pan.y.toFixed(2)}`;
         });
-
-        // 滾輪縮放：Panzoom 會自動根據滑鼠座標計算 offset 以維持線性對齊
+        
         document.getElementById('map-section').addEventListener('wheel', pz.zoomWithWheel);
         
         const res = await fetch(`folder.csv?t=${Date.now()}`);
