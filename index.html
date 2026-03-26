@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V10.7.15b</title>
+    <title>亞伯拉罕史地互動地圖 V10.7.15c</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -121,43 +121,37 @@
         debug.innerText = `Scale: ${sc.toFixed(2)} | MouseImg: ${mouseImgPx}, ${mouseImgPy}px | MouseBox: ${mx.toFixed(0)}, ${my.toFixed(0)} | TargetImg: ${targetInfo}`;
     }
 
-/* 手術刀協議 V10.9: 動態尺寸補償法 */
+/* 手術刀協議：10.7.6 核心邏輯（純圖片驗證版） */
 function flyTo(pts) {
-    const img = document.getElementById('bg-map');
-    const container = document.getElementById('map-section');
-    if (!img || !container) return;
+    const sc = pz.getScale(); // 獲取目前縮放倍率
     
-    // 1. 動態取得容器中心點 (取代寫死的 304)
-    const viewCenterX = container.clientWidth / 2;
-    const viewCenterY = container.clientHeight / 2;
+    // 1. 計算目標點在 1408 座標系下的平均像素位置
+    let tx = 0, ty = 0;
+    pts.forEach(p => {
+        tx += parseFloat(p.x);
+        ty += parseFloat(p.y);
+    });
+    const avgX = tx / pts.length;
+    const avgY = ty / pts.length;
 
-    // 2. 取得圖片在 1.0 倍時的實際物理寬度 (取代寫死的 1408)
-    // 這是解決偏差的最重要一步
-    const naturalW = img.offsetWidth;
-    const naturalH = img.offsetHeight;
+    // 將百分比轉為像素 (1408 * % / 100)
+    const px = (avgX / 100) * 1408;
+    const py = (avgY / 100) * 768;
 
-    // 3. 取得目前縮放倍率
-    const sc = pz.getScale();
+    // 2. 應用 10.7.6 實驗證實有效的物理補償公式
+    // 公式：容器中心 - (目標點 * 倍率) + (圖片寬度 * (倍率 - 1) / 2)
+    const offsetX = (1408 * (sc - 1)) / 2;
+    const offsetY = (768 * (sc - 1)) / 2;
 
-    // 4. 計算目標點像素
-    let tx = 0, ty = 0; 
-    pts.forEach(p => { tx += parseFloat(p.x); ty += parseFloat(p.y); });
-    const px = (tx / pts.length / 100) * naturalW;
-    const py = (ty / pts.length / 100) * naturalH;
+    const targetX = 304 - (px * sc) + offsetX;
+    const targetY = 200 - (py * sc) + offsetY; // 假設容器高度 400，中心即為 200
 
-    // 5. 核心補償公式 (經 V2 實驗證實有效)
-    const offsetX = (naturalW * (sc - 1)) / 2;
-    const offsetY = (naturalH * (sc - 1)) / 2;
-
-    const targetX = viewCenterX - (px * sc) + offsetX;
-    const targetY = viewCenterY - (py * sc) + offsetY;
-
+    // 3. 執行平移
     pz.pan(targetX, targetY, { animate: true });
-    
-    // 更新除錯資訊 (可選)
-    setTimeout(updateDebugDisplay, 300);
-}   
 
+    // 4. 強制更新 Debug 資訊（方便我們對照）
+    console.log(`FlyTo 驗證數據: Scale:${sc}, PanX:${targetX.toFixed(2)}, OffsetX:${offsetX.toFixed(2)}`);
+}
 
     function toggleSearch() { const input = document.getElementById('search-input'); const isOpening = !input.classList.contains('open'); input.classList.toggle('open'); if (isOpening) input.focus(); else hideHistory(); }
     function handleSearch(keyword) {
