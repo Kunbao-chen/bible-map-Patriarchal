@@ -3,52 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V10.7.15c</title>
+    <title>亞伯拉罕史地互動地圖 V10.7.0</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
         :root { --gold: #c5a059; --dark: #2c3e50; --brown: #5d4037; --ink-blue: rgba(50, 75, 95, 0.6); --handle-bg: #ddd; }
         * { box-sizing: border-box; }
-        body { margin: 0; padding: 0; width: 100vw; height: 100dvh; overflow: hidden; background: #fdf6e3; font-family: "微軟正黑體", "Heiti TC", "Apple LiGothic Medium", sans-serif; }
+        body { 
+            margin: 0; padding: 0; width: 100vw; height: 100dvh; overflow: hidden; 
+            background: #fdf6e3; font-family: "微軟正黑體", "Heiti TC", "Apple LiGothic Medium", sans-serif; 
+        }
+        
         #app-container { display: flex; width: 100%; height: 100%; flex-direction: row; }
-        @media (max-width: 800px) and (orientation: portrait) { #app-container { flex-direction: column; } #side-panel { width: 100% !important; flex: 0 0 50dvh; } }
+        @media (max-width: 800px) and (orientation: portrait) {
+            #app-container { flex-direction: column; }
+            #side-panel { width: 100% !important; flex: 0 0 50dvh; }
+        }
+
         #map-section { flex: 1; position: relative; overflow: hidden; background: #e5d3b3; }
         #panzoom-element { display: inline-block; position: relative; }
         #bg-map { display: block; max-width: none; user-select: none; }
-        #debug-info { position: absolute; right: 10px; bottom: 10px; z-index: 3000; background: rgba(0,0,0,0.6); color: #fff; padding: 4px 8px; border-radius: 4px; font-family: monospace; font-size: 11px; pointer-events: none; white-space: nowrap; }
+        
+        /* 標籤樣式 */
         .marker { position: absolute; transform-origin: center; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; z-index: 10; cursor: pointer; }
         .marker .dot { width: 5px; height: 5px; background: rgba(93,64,55,0.5); border-radius: 50%; margin-bottom: 2px; }
-        .marker .label { opacity: 0; padding: 2px 6px; border-radius: 8px; background: rgba(255,255,255,0.9); border: 1.5px solid var(--brown); white-space: nowrap; font-weight: bold; font-size: 13px; color: var(--brown); transition: opacity 0.4s ease-in-out, transform 0.2s ease; pointer-events: none; }
+        .marker .label { 
+            opacity: 0; padding: 2px 6px; border-radius: 8px; background: rgba(255,255,255,0.9); 
+            border: 1.5px solid var(--brown); white-space: nowrap; font-weight: bold; font-size: 13px; 
+            color: var(--brown); transition: opacity 0.4s ease-in-out, transform 0.2s ease; pointer-events: none;
+        }
         .marker.region-type .label { background: none !important; border: none !important; font-family: 'ZCOOL KuaiLe', cursive; color: var(--ink-blue); text-shadow: 0 0 5px #fdf6e3, 0 0 2px #fdf6e3; }
+
         .marker.highlight { z-index: 1000 !important; }
         .marker.highlight .label { opacity: 1 !important; animation: labelBreathe 0.8s infinite alternate ease-in-out; background: #fffde7 !important; border: 2px solid #d32f2f !important; color: #d32f2f !important; pointer-events: auto !important; }
         @keyframes labelBreathe { from { transform: translateY(0) scale(1); } to { transform: translateY(-6px) scale(1.05); } }
+
+        /* 搜尋介面修正：叉叉置於左側 */
         .search-container { position: absolute; right: 12px; top: 12px; z-index: 2000; display: flex; flex-direction: column; align-items: flex-end; }
         .search-bar-wrapper { display: flex; align-items: center; background: rgba(255,255,255,0.4); backdrop-filter: blur(8px); border-radius: 10px; border: 2px solid var(--brown); padding: 2px; }
-        .search-clear { cursor: pointer; display: none; padding: 0 8px; color: var(--brown); font-weight: bold; font-size: 18px; order: -1; }
+        .search-clear { cursor: pointer; display: none; padding: 0 8px; color: var(--brown); font-weight: bold; font-size: 18px; order: -1; } /* order -1 確保在最左 */
         #search-input { width: 0; opacity: 0; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); border: none; background: transparent; height: 32px; outline: none; font-size: 14px; }
         #search-input.open { width: 160px; opacity: 1; padding: 0 8px; }
         .search-btn { width: 34px; height: 34px; cursor: pointer; display: flex; align-items: center; justify-content: center; background: transparent; border: none; }
-        #search-history { display: none; width: 200px; background: white; border: 1px solid #ccc; border-radius: 8px; margin-top: 5px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); overflow-y: auto; max-height: 30dvh; }
+
+        #search-history { 
+            display: none; width: 200px; background: white; border: 1px solid #ccc; border-radius: 8px; 
+            margin-top: 5px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); overflow-y: auto; max-height: 30dvh; 
+        }
         .history-item { padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; cursor: pointer; font-size: 13px; }
         .history-item:hover { background: #f9f9f9; }
+
         #resizer-main { background: var(--handle-bg); z-index: 1100; display: flex; align-items: center; justify-content: center; touch-action: none; }
         @media (min-width: 801px), (orientation: landscape) { #resizer-main { width: 12px; cursor: col-resize; height: 100%; } #resizer-main::after { content: "⋮"; } }
         @media (max-width: 800px) and (orientation: portrait) { #resizer-main { height: 16px; cursor: row-resize; width: 100%; } #resizer-main::after { content: "⋯"; } }
+        
         #side-panel { background: white; display: flex; flex-direction: column; overflow: hidden; position: relative; }
         #info-area { display: none; flex-direction: column; background: #fff; flex: 0 0 45%; min-height: 44px; }
         #info-header { background: var(--dark); color: white; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; height: 44px; }
         #resizer-inner { height: 12px; background: #eee; cursor: row-resize; display: flex; align-items: center; justify-content: center; touch-action: none; flex-shrink: 0; border-top: 1px solid #ddd; }
         #list-container { flex: 1; overflow-y: auto; }
         tr.active-row td { background: #fffde7; font-weight: bold; border-left: 5px solid var(--gold); }
+
         .fab-container { position: absolute; left: 12px; top: 12px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; }
         .fab-main { width: 42px; height: 42px; background: rgba(255,255,255,0.4); backdrop-filter: blur(8px); border: 2px solid var(--brown); border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
     </style>
 </head>
 <body>
+
 <div id="app-container">
     <div id="map-section">
-        <div id="debug-info">Scale: 1.00 | MouseImg: 0, 0px | MouseBox: 0, 0 | TargetImg: None</div>
         <div class="search-container">
             <div class="search-bar-wrapper">
                 <div id="search-clear" class="search-clear" onclick="clearSearch()">×</div>
@@ -57,6 +80,7 @@
             </div>
             <div id="search-history"></div>
         </div>
+        
         <div class="fab-container">
             <button class="fab-main" onclick="toggleFab()"><svg viewBox="0 0 24 24" width="22" fill="#5d4037"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg></button>
             <div id="fab-menu" class="fab-menu" style="display:none; flex-direction:column; gap:6px;">
@@ -65,6 +89,7 @@
                 <button class="fab-item" onclick="resetView()" style="width:34px; height:34px; border-radius:10px;">↺</button>
             </div>
         </div>
+
         <div id="panzoom-element">
             <img src="" id="bg-map">
             <div id="overlay-container" style="position:absolute; top:0; left:0; pointer-events:none;">
@@ -73,7 +98,9 @@
             </div>
         </div>
     </div>
+    
     <div id="resizer-main"></div>
+    
     <div id="side-panel">
         <div id="folder-nav"><select id="folder-select" onchange="loadProject(this.value)" style="width:100%; padding:8px;"><option value="">載入中...</option></select></div>
         <div id="info-area">
@@ -92,182 +119,378 @@
 </div>
 
 <script>
-    let pz, eventData = [], filteredData = [], allCoords = [], currentFolder = '', currentMapIdx = -1, currentEventIdx = -1, baseMarkerFontSize = 13;
-    let lastM = {x:0, y:0};
+    let pz, eventData = [], filteredData = [], allCoords = [], locFreq = {}, currentFolder = '', currentMapIdx = -1, currentEventIdx = -1, baseMarkerFontSize = 13;
     let searchHistory = JSON.parse(localStorage.getItem('bibleSearchHistory') || '[]');
 
-    function updateDebugDisplay(mouseX, mouseY) {
-        const debug = document.getElementById('debug-info');
-        const img = document.getElementById('bg-map');
-        if (!img.offsetWidth) return;
-        const sc = pz ? pz.getScale() : 1;
-        const mx = (mouseX !== undefined) ? mouseX : lastM.x;
-        const my = (mouseY !== undefined) ? mouseY : lastM.y;
-        if (mouseX !== undefined) { lastM.x = mouseX; lastM.y = mouseY; }
-        const rect = img.getBoundingClientRect();
-        const mouseImgPx = Math.round((mx - rect.left) / sc);
-        const mouseImgPy = Math.round((my - rect.top) / sc);
-        let targetInfo = "None";
-        if (currentEventIdx !== -1 && filteredData[currentEventIdx]) {
-            const item = filteredData[currentEventIdx];
-            const mapData = allCoords.filter(c => c.mapIdx === currentMapIdx);
-            const logic = parseLocationLogic(item.loc, mapData);
-            if (logic.points.length > 0) {
-                const tx = (parseFloat(logic.points[0].x) / 100 * img.offsetWidth).toFixed(0);
-                const ty = (parseFloat(logic.points[0].y) / 100 * img.offsetHeight).toFixed(0);
-                targetInfo = `${tx}, ${ty}px`;
-            }
-        }
-        debug.innerText = `Scale: ${sc.toFixed(2)} | MouseImg: ${mouseImgPx}, ${mouseImgPy}px | MouseBox: ${mx.toFixed(0)}, ${my.toFixed(0)} | TargetImg: ${targetInfo}`;
+    function toggleSearch() {
+        const input = document.getElementById('search-input');
+        const isOpening = !input.classList.contains('open');
+        input.classList.toggle('open');
+        if (isOpening) { input.focus(); } else { hideHistory(); }
     }
 
-/* 手術刀協議：10.7.6 核心邏輯（純圖片驗證版） */
-function flyTo(pts) {
-    const sc = pz.getScale(); // 獲取目前縮放倍率
-    
-    // 1. 計算目標點在 1408 座標系下的平均像素位置
-    let tx = 0, ty = 0;
-    pts.forEach(p => {
-        tx += parseFloat(p.x);
-        ty += parseFloat(p.y);
-    });
-    const avgX = tx / pts.length;
-    const avgY = ty / pts.length;
-
-    // 將百分比轉為像素 (1408 * % / 100)
-    const px = (avgX / 100) * 1408;
-    const py = (avgY / 100) * 768;
-
-    // 2. 應用 10.7.6 實驗證實有效的物理補償公式
-    // 公式：容器中心 - (目標點 * 倍率) + (圖片寬度 * (倍率 - 1) / 2)
-    const offsetX = (1408 * (sc - 1)) / 2;
-    const offsetY = (768 * (sc - 1)) / 2;
-
-    const targetX = 304 - (px * sc) + offsetX;
-    const targetY = 200 - (py * sc) + offsetY; // 假設容器高度 400，中心即為 200
-
-    // 3. 執行平移
-    pz.pan(targetX, targetY, { animate: true });
-
-    // 4. 強制更新 Debug 資訊（方便我們對照）
-    console.log(`FlyTo 驗證數據: Scale:${sc}, PanX:${targetX.toFixed(2)}, OffsetX:${offsetX.toFixed(2)}`);
-}
-
-    function toggleSearch() { const input = document.getElementById('search-input'); const isOpening = !input.classList.contains('open'); input.classList.toggle('open'); if (isOpening) input.focus(); else hideHistory(); }
+    // --- 高效率計次搜尋與排序 (Q3, Q5) ---
     function handleSearch(keyword) {
         const input = document.getElementById('search-input');
         const term = (keyword !== undefined ? keyword : input.value).trim().toLowerCase();
         const clearBtn = document.getElementById('search-clear');
+        
         clearBtn.style.display = term ? 'block' : 'none';
-        if (!term) filteredData = [...eventData]; else {
-            const regex = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-            filteredData = eventData.map(item => ({ ...item, score: (item._searchStr.match(regex) || []).length })).filter(item => item.score > 0).sort((a, b) => b.score - a.score);
+
+        if (!term) {
+            filteredData = [...eventData];
+        } else {
+            const safeTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(safeTerm, 'gi');
+
+            filteredData = eventData
+                .map(item => {
+                    const match = item._searchStr.match(regex);
+                    return { ...item, score: match ? match.length : 0 };
+                })
+                .filter(item => item.score > 0)
+                .sort((a, b) => b.score - a.score);
         }
+        
         renderTable(filteredData);
         if (term && keyword === undefined) saveHistory(term);
-        if (term && filteredData.length > 0) { selectEvent(0); document.getElementById('list-container').scrollTop = 0; }
+        
+        // 搜尋完畢主動點選第一項
+        if (term && filteredData.length > 0) {
+            selectEvent(0);
+            document.getElementById('list-container').scrollTop = 0;
+        }
     }
-    function clearSearch() { const input = document.getElementById('search-input'); input.value = ''; input.classList.remove('open'); document.getElementById('search-clear').style.display = 'none'; hideHistory(); handleSearch(""); }
-    function saveHistory(term) { if (!term.trim()) return; searchHistory = [term, ...searchHistory.filter(h => h !== term)].slice(0, 10); localStorage.setItem('bibleSearchHistory', JSON.stringify(searchHistory)); renderHistory(); }
-    function renderHistory() { document.getElementById('search-history').innerHTML = searchHistory.map(h => `<div class="history-item" onclick="useHistory('${h}')"><span>${h}</span><span style="color:#ccc" onclick="deleteHistory(event, '${h}')">×</span></div>`).join(''); }
-    function useHistory(h) { document.getElementById('search-input').value = h; handleSearch(h); hideHistory(); }
-    function deleteHistory(e, h) { e.stopPropagation(); searchHistory = searchHistory.filter(item => item !== h); localStorage.setItem('bibleSearchHistory', JSON.stringify(searchHistory)); renderHistory(); }
+
+    function clearSearch() {
+        const lastId = currentEventIdx !== -1 ? filteredData[currentEventIdx].id : null;
+        const input = document.getElementById('search-input');
+        input.value = '';
+        input.classList.remove('open');
+        document.getElementById('search-clear').style.display = 'none';
+        hideHistory();
+        
+        handleSearch(""); // 重置列表
+        
+        // 保留最後選取的事件 (Q4)
+        if (lastId) {
+            const newIdx = filteredData.findIndex(d => d.id === lastId);
+            if (newIdx !== -1) {
+                selectEvent(newIdx);
+                const r = document.getElementById('table-body').rows[newIdx];
+                if(r) r.scrollIntoView({block:'center'});
+            }
+        }
+    }
+
+    function saveHistory(term) {
+        if (!term.trim()) return;
+        searchHistory = [term, ...searchHistory.filter(h => h !== term)].slice(0, 10);
+        localStorage.setItem('bibleSearchHistory', JSON.stringify(searchHistory));
+        renderHistory();
+    }
+
+    function renderHistory() {
+        const panel = document.getElementById('search-history');
+        panel.innerHTML = searchHistory.map(h => `
+            <div class="history-item" onclick="useHistory('${h}')">
+                <span>${h}</span>
+                <span style="color:#ccc" onclick="deleteHistory(event, '${h}')">×</span>
+            </div>
+        `).join('');
+    }
+
+    function useHistory(h) {
+        document.getElementById('search-input').value = h;
+        handleSearch(h);
+        hideHistory();
+    }
+
+    function deleteHistory(e, h) {
+        e.stopPropagation();
+        searchHistory = searchHistory.filter(item => item !== h);
+        localStorage.setItem('bibleSearchHistory', JSON.stringify(searchHistory));
+        renderHistory();
+    }
+
     function showHistory() { if(searchHistory.length) document.getElementById('search-history').style.display = 'block'; renderHistory(); }
     function hideHistory() { document.getElementById('search-history').style.display = 'none'; }
-    function selectEvent(idxInFiltered) { if (idxInFiltered < 0 || idxInFiltered >= filteredData.length) return; currentEventIdx = idxInFiltered; const item = filteredData[idxInFiltered]; Array.from(document.getElementById('table-body').rows).forEach((r, i) => r.className = i === idxInFiltered ? 'active-row' : ''); updateMapAndInfo(item); }
-    function navEvent(step) { const nextIdx = currentEventIdx + step; if (nextIdx >= 0 && nextIdx < filteredData.length) { selectEvent(nextIdx); const r = document.getElementById('table-body').rows[nextIdx]; if(r) r.scrollIntoView({behavior:'smooth', block:'center'}); } }
+
+    function selectEvent(idxInFiltered) {
+        if (idxInFiltered < 0 || idxInFiltered >= filteredData.length) return;
+        currentEventIdx = idxInFiltered;
+        const item = filteredData[idxInFiltered];
+        
+        Array.from(document.getElementById('table-body').rows).forEach((r, i) => 
+            r.className = i === idxInFiltered ? 'active-row' : ''
+        );
+        updateMapAndInfo(item);
+    }
+
+    function navEvent(step) {
+        const nextIdx = currentEventIdx + step;
+        if (nextIdx >= 0 && nextIdx < filteredData.length) {
+            selectEvent(nextIdx);
+            const r = document.getElementById('table-body').rows[nextIdx];
+            if(r) r.scrollIntoView({behavior:'smooth', block:'center'});
+        }
+    }
+
     async function updateMapAndInfo(item) {
-        let targetMapIdx = 1; const testNames = item.loc.split(/[+→]/).map(p => p.replace(/\(.*?\)/g, '').trim());
-        for (let x = 15; x >= 1; x--) { const db = allCoords.filter(c => c.mapIdx === x); if (db.length && testNames.every(n => findBestMatch(n, db))) { targetMapIdx = x; break; } }
+        let targetMapIdx = 1;
+        const testNames = item.loc.split(/[+→]/).map(p => p.replace(/\(.*?\)/g, '').trim());
+        for (let x = 15; x >= 1; x--) {
+            const db = allCoords.filter(c => c.mapIdx === x);
+            if (db.length && testNames.every(n => findBestMatch(n, db))) { targetMapIdx = x; break; }
+        }
         if (currentMapIdx !== targetMapIdx) {
-            currentMapIdx = targetMapIdx; const img = document.getElementById('bg-map'); img.src = `${currentFolder}/picture-${targetMapIdx}.png`;
+            currentMapIdx = targetMapIdx;
+            const img = document.getElementById('bg-map');
+            img.src = `${currentFolder}/picture-${targetMapIdx}.png`;
             await new Promise(res => img.onload = () => { syncOverlay(); updateMinScale(); res(); });
         }
-        const mapData = allCoords.filter(c => c.mapIdx === targetMapIdx); renderVisuals(mapData, parseLocationLogic(item.loc, mapData)); updateInfoPanel(item);
+        const mapData = allCoords.filter(c => c.mapIdx === targetMapIdx);
+        renderVisuals(mapData, parseLocationLogic(item.loc, mapData));
+        updateInfoPanel(item);
     }
+
     function renderVisuals(db, logic) {
-        const ml = document.getElementById('marker-layer'), sl = document.getElementById('svg-layer'); sl.innerHTML = '';
+        const ml = document.getElementById('marker-layer'), sl = document.getElementById('svg-layer');
+        sl.innerHTML = '';
         logic.paths.forEach(path => {
             for (let i = 0; i < path.length - 1; i++) {
                 const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                line.setAttribute('x1', path[i].x+'%'); line.setAttribute('y1', path[i].y+'%'); line.setAttribute('x2', path[i+1].x+'%'); line.setAttribute('y2', path[i+1].y+'%');
-                line.setAttribute('stroke', '#d32f2f'); line.setAttribute('stroke-width', '2.5'); sl.appendChild(line);
+                line.setAttribute('x1', path[i].x+'%'); line.setAttribute('y1', path[i].y+'%');
+                line.setAttribute('x2', path[i+1].x+'%'); line.setAttribute('y2', path[i+1].y+'%');
+                line.setAttribute('stroke', '#d32f2f'); line.setAttribute('stroke-width', '2.5');
+                sl.appendChild(line);
             }
         });
-        const existingMarkers = Array.from(ml.querySelectorAll('.marker')); const newPointNames = db.map(d => d.n);
+
+        const existingMarkers = Array.from(ml.querySelectorAll('.marker'));
+        const newPointNames = db.map(d => d.n);
         existingMarkers.forEach(m => { if (!newPointNames.includes(m.dataset.name)) m.remove(); });
+
         db.forEach(data => {
-            const isH = logic.points.some(p => p.n === data.n); let m = ml.querySelector(`.marker[data-name="${data.n}"]`);
-            if (!m) { m = document.createElement('div'); m.className = 'marker'; m.dataset.name = data.n; m.innerHTML = `<div class="dot"></div><div class="label">${data.n}</div>`; m.onclick = (e) => { e.stopPropagation(); const input = document.getElementById('search-input'); input.classList.add('open'); input.value = data.n; handleSearch(data.n); }; ml.appendChild(m); }
-            m.className = `marker ${isH ? 'highlight' : ''} ${data.size > 2 ? 'region-type' : ''}`; m.style.left = data.x + '%'; m.style.top = data.y + '%'; m.dataset.size = data.size;
+            const isH = logic.points.some(p => p.n === data.n);
+            let m = ml.querySelector(`.marker[data-name="${data.n}"]`);
+            if (!m) {
+                m = document.createElement('div');
+                m.className = 'marker';
+                m.dataset.name = data.n;
+                m.innerHTML = `<div class="dot"></div><div class="label">${data.n}</div>`;
+                m.onclick = (e) => {
+                    e.stopPropagation();
+                    const input = document.getElementById('search-input');
+                    input.classList.add('open');
+                    input.value = data.n;
+                    handleSearch(data.n);
+                };
+                ml.appendChild(m);
+            }
+            m.className = `marker ${isH ? 'highlight' : ''} ${data.size > 2 ? 'region-type' : ''}`;
+            m.style.left = data.x + '%'; m.style.top = data.y + '%';
+            m.dataset.size = data.size;
         });
-        applyMarkerStyles(); if (logic.points.length) flyTo(logic.points); setTimeout(refreshCollision, 60); 
+        applyMarkerStyles();
+        if (logic.points.length) flyTo(logic.points);
+        setTimeout(refreshCollision, 60); 
     }
+
+    // --- 碰撞優化 (Q2): 關閉隱藏標籤點擊 ---
     function refreshCollision() {
-        const markers = Array.from(document.querySelectorAll('.marker')); markers.sort((a, b) => (a.classList.contains('highlight') ? -1 : 1));
-        const occupied = []; markers.forEach(m => {
-            const label = m.querySelector('.label'), rect = label.getBoundingClientRect();
+        const markers = Array.from(document.querySelectorAll('.marker'));
+        markers.sort((a, b) => (a.classList.contains('highlight') ? -1 : 1));
+        const occupied = [];
+        markers.forEach(m => {
+            const label = m.querySelector('.label');
+            const rect = label.getBoundingClientRect();
             const isOverlap = occupied.some(o => !(rect.right<o.left || rect.left>o.right || rect.bottom<o.top || rect.top>o.bottom));
-            if (isOverlap && !m.classList.contains('highlight')) { label.style.opacity = "0"; m.style.pointerEvents = "none"; } 
-            else { label.style.opacity = "1"; m.style.pointerEvents = "auto"; occupied.push(rect); }
+            
+            if (isOverlap && !m.classList.contains('highlight')) {
+                label.style.opacity = "0";
+                m.style.pointerEvents = "none";
+            } else { 
+                label.style.opacity = "1"; 
+                m.style.pointerEvents = "auto";
+                occupied.push(rect); 
+            }
         });
     }
+
     function initResizers() {
         const rMain = document.getElementById('resizer-main'), side = document.getElementById('side-panel');
         const rInner = document.getElementById('resizer-inner'), info = document.getElementById('info-area');
         let startX, startY, startW, startH;
+
         rMain.onmousedown = rMain.ontouchstart = (e) => {
-            e.preventDefault(); const px = e.clientX || (e.touches ? e.touches[0].clientX : 0), py = e.clientY || (e.touches ? e.touches[0].clientY : 0);
-            startX = px; startY = py; startW = side.offsetWidth; startH = side.offsetHeight;
+            e.preventDefault();
+            const pointerX = e.clientX || (e.touches ? e.touches[0].clientX : 0);
+            const pointerY = e.clientY || (e.touches ? e.touches[0].clientY : 0);
+            startX = pointerX; startY = pointerY; startW = side.offsetWidth; startH = side.offsetHeight;
             window.onmousemove = window.ontouchmove = (ev) => {
-                const x = ev.clientX || (ev.touches ? ev.touches[0].clientX : 0), y = ev.clientY || (ev.touches ? ev.touches[0].clientY : 0);
-                if (window.innerWidth < window.innerHeight && window.matchMedia("(orientation: portrait)").matches) side.style.flex = `0 0 ${Math.max(100, Math.min(startH + (startY - y), window.innerHeight * 0.8))}px`; 
-                else { side.style.flex = "none"; side.style.width = `${Math.max(200, Math.min(startW + (startX - x), window.innerWidth * 0.7))}px`; }
+                const x = ev.clientX || (ev.touches ? ev.touches[0].clientX : 0);
+                const y = ev.clientY || (ev.touches ? ev.touches[0].clientY : 0);
+                if (window.innerWidth < window.innerHeight && window.matchMedia("(orientation: portrait)").matches) {
+                    side.style.flex = `0 0 ${Math.max(100, Math.min(startH + (startY - y), window.innerHeight * 0.8))}px`;
+                } else {
+                    side.style.flex = "none"; 
+                    side.style.width = `${Math.max(200, Math.min(startW + (startX - x), window.innerWidth * 0.7))}px`;
+                }
                 syncOverlay(); updateMinScale(); refreshCollision();
             };
             window.onmouseup = window.ontouchend = () => { window.onmousemove = window.ontouchmove = null; };
         };
+
         rInner.onmousedown = rInner.ontouchstart = (e) => {
-            e.preventDefault(); startY = e.clientY || (e.touches ? e.touches[0].clientY : 0); startH = info.offsetHeight;
-            window.onmousemove = window.ontouchmove = (ev) => { const y = ev.clientY || (ev.touches ? ev.touches[0].clientY : 0); info.style.flex = `0 0 ${Math.max(44, Math.min(startH + (y - startY), side.offsetHeight * 0.9))}px`; };
+            e.preventDefault();
+            startY = e.clientY || (e.touches ? e.touches[0].clientY : 0);
+            startH = info.offsetHeight;
+            window.onmousemove = window.ontouchmove = (ev) => {
+                const y = ev.clientY || (ev.touches ? ev.touches[0].clientY : 0);
+                info.style.flex = `0 0 ${Math.max(44, Math.min(startH + (y - startY), side.offsetHeight * 0.9))}px`;
+            };
             window.onmouseup = window.ontouchend = () => { window.onmousemove = window.ontouchmove = null; };
         };
     }
-    function renderTable(data) { const tbody = document.getElementById('table-body'); tbody.innerHTML = ''; data.forEach((item, i) => { const tr = document.createElement('tr'); tr.innerHTML = `<td width="40" style="padding:12px; border-bottom:1px solid #eee;">${item.id}</td><td style="padding:12px; border-bottom:1px solid #eee;">${item.event}</td>`; tr.onclick = () => selectEvent(i); tbody.appendChild(tr); }); }
-    function updateInfoPanel(item) { document.getElementById('info-area').style.display = 'flex'; document.getElementById('info-title').innerText = item.event; document.getElementById('info-time').innerText = item.time; document.getElementById('info-path').innerText = `地點：${item.loc}`; document.getElementById('info-script').innerText = item.script; document.getElementById('info-note').innerText = item.note; }
-    function toggleInfo() { const body = document.getElementById('info-body'), arrow = document.getElementById('info-arrow'), area = document.getElementById('info-area'); if (body.style.display === 'none') { body.style.display = 'block'; area.style.flex = "0 0 45%"; arrow.innerText = '▼'; } else { body.style.display = 'none'; area.style.flex = "0 0 44px"; arrow.innerText = '▲'; } }
-    function parseCSV(t) { const rows = []; let row = [], cell = '', q = false; for (let i = 0; i < t.length; i++) { let c = t[i], n = t[i+1]; if (c === '"' && q && n === '"') { cell += '"'; i++; } else if (c === '"') q = !q; else if (c === ',' && !q) { row.push(cell.trim()); cell = ''; } else if ((c === '\n' || c === '\r') && !q) { if (row.length > 0 || cell) { row.push(cell.trim()); rows.push(row); } row = []; cell = ''; if (c === '\r' && n === '\n') i++; } else cell += c; } if (row.length > 0 || cell) { row.push(cell.trim()); rows.push(row); } return rows; }
+
+    function renderTable(data) {
+        const tbody = document.getElementById('table-body');
+        tbody.innerHTML = '';
+        data.forEach((item, i) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td width="40" style="padding:12px; border-bottom:1px solid #eee;">${item.id}</td><td style="padding:12px; border-bottom:1px solid #eee;">${item.event}</td>`;
+            tr.onclick = () => selectEvent(i);
+            tbody.appendChild(tr);
+        });
+    }
+
+    function updateInfoPanel(item) {
+        document.getElementById('info-area').style.display = 'flex';
+        document.getElementById('info-title').innerText = item.event;
+        document.getElementById('info-time').innerText = item.time;
+        document.getElementById('info-path').innerText = `地點：${item.loc}`;
+        document.getElementById('info-script').innerText = item.script;
+        document.getElementById('info-note').innerText = item.note;
+    }
+
+    function toggleInfo() {
+        const body = document.getElementById('info-body'), arrow = document.getElementById('info-arrow'), area = document.getElementById('info-area');
+        if (body.style.display === 'none') { body.style.display = 'block'; area.style.flex = "0 0 45%"; arrow.innerText = '▼'; }
+        else { body.style.display = 'none'; area.style.flex = "0 0 44px"; arrow.innerText = '▲'; }
+    }
+
+    function parseCSV(t) {
+        const rows = []; let row = [], cell = '', q = false;
+        for (let i = 0; i < t.length; i++) {
+            let c = t[i], n = t[i+1];
+            if (c === '"' && q && n === '"') { cell += '"'; i++; }
+            else if (c === '"') q = !q;
+            else if (c === ',' && !q) { row.push(cell.trim()); cell = ''; }
+            else if ((c === '\n' || c === '\r') && !q) {
+                if (row.length > 0 || cell) { row.push(cell.trim()); rows.push(row); }
+                row = []; cell = ''; if (c === '\r' && n === '\n') i++;
+            } else cell += c;
+        }
+        if (row.length > 0 || cell) { row.push(cell.trim()); rows.push(row); }
+        return rows;
+    }
+
     async function loadProject(folder) {
-        if (!folder) return; currentFolder = folder; localStorage.setItem('lastBibleFolder', folder); allCoords = [];
-        const dRes = await fetch(`${folder}/data.csv?t=${Date.now()}`); eventData = parseCSV(await dRes.text()).slice(1).filter(r => r.length > 2).map(r => { const obj = { id:r[0], time:r[1], event:r[2], loc:r[3], script:r[4], note:r[5] }; obj._searchStr = Object.values(obj).join(' ').toLowerCase(); return obj; });
-        filteredData = [...eventData]; renderTable(filteredData);
-        for (let x = 1; x <= 15; x++) { try { const cRes = await fetch(`${folder}/coords-${x}.csv?t=${Date.now()}`); if (!cRes.ok) break; parseCSV(await cRes.text()).slice(1).forEach(r => { if(r[1] && r[5]) allCoords.push({ n: r[1].trim(), x: r[5], y: r[6], mapIdx: x, size: parseInt(r[7])||0 }); }); } catch(e) { break; } }
+        if (!folder) return;
+        currentFolder = folder; localStorage.setItem('lastBibleFolder', folder);
+        allCoords = [];
+        const dRes = await fetch(`${folder}/data.csv?t=${Date.now()}`);
+        eventData = parseCSV(await dRes.text()).slice(1).filter(r => r.length > 2).map(r => {
+            const obj = { id:r[0], time:r[1], event:r[2], loc:r[3], script:r[4], note:r[5] };
+            // 預建立搜尋索引字串 (Q3 優化)
+            obj._searchStr = Object.values(obj).join(' ').toLowerCase();
+            return obj;
+        });
+        filteredData = [...eventData];
+        renderTable(filteredData);
+        for (let x = 1; x <= 15; x++) {
+            try {
+                const cRes = await fetch(`${folder}/coords-${x}.csv?t=${Date.now()}`);
+                if (!cRes.ok) break;
+                parseCSV(await cRes.text()).slice(1).forEach(r => { if(r[1] && r[5]) allCoords.push({ n: r[1].trim(), x: r[5], y: r[6], mapIdx: x, size: parseInt(r[7])||0 }); });
+            } catch(e) { break; }
+        }
         if(filteredData.length > 0) selectEvent(0);
     }
-    function findBestMatch(t, db) { let b = null, m = Infinity; for (const i of db) { if (i.n === t) return i; if (i.n.includes(t) || t.includes(i.n)) { let d = Math.abs(i.n.length - t.length); if (d < m) { m = d; b = i; } } } return b; }
-    function parseLocationLogic(locStr, db) { const result = { paths: [], points: [] }; locStr.split('+').map(b => b.trim()).forEach(block => { if (block.includes('→')) { const chain = block.split('→').map(p => findBestMatch(p.replace(/\(.*?\)/g, '').trim(), db)).filter(p => p); if (chain.length > 1) result.paths.push(chain); chain.forEach(p => result.points.push(p)); } else { const pt = findBestMatch(block.replace(/\(.*?\)/g, '').trim(), db); if (pt) result.points.push(pt); } }); return result; }
-    function applyMarkerStyles() { const s = pz ? pz.getScale() : 1; const anti = s > 1 ? 1 / s : 1; document.querySelectorAll('.marker').forEach(m => { const gain = parseInt(m.dataset.size) || 0; m.querySelector('.label').style.fontSize = (baseMarkerFontSize + (gain * 1.5)) + 'px'; m.style.transform = `translate(-50%, -50%) scale(${anti})`; }); }
-    function updateMinScale() { const img = document.getElementById('bg-map'), c = document.getElementById('map-section'); if (!img.offsetWidth) return; const min = Math.max(c.clientWidth / img.offsetWidth, c.clientHeight / img.offsetHeight); pz.setOptions({ minScale: min }); if (pz.getScale() < min) pz.zoom(min, { animate: true }); }
-    function syncOverlay() { const img = document.getElementById('bg-map'), ov = document.getElementById('overlay-container'); ov.style.width = img.offsetWidth + 'px'; ov.style.height = img.offsetHeight + 'px'; }
+
+    function findBestMatch(t, db) {
+        let b = null, m = Infinity;
+        for (const i of db) {
+            if (i.n === t) return i;
+            if (i.n.includes(t) || t.includes(i.n)) { let d = Math.abs(i.n.length - t.length); if (d < m) { m = d; b = i; } }
+        }
+        return b;
+    }
+
+    function parseLocationLogic(locStr, db) {
+        const result = { paths: [], points: [] };
+        locStr.split('+').map(b => b.trim()).forEach(block => {
+            if (block.includes('→')) {
+                const chain = block.split('→').map(p => findBestMatch(p.replace(/\(.*?\)/g, '').trim(), db)).filter(p => p);
+                if (chain.length > 1) result.paths.push(chain);
+                chain.forEach(p => result.points.push(p));
+            } else {
+                const pt = findBestMatch(block.replace(/\(.*?\)/g, '').trim(), db);
+                if (pt) result.points.push(pt);
+            }
+        });
+        return result;
+    }
+
+    function applyMarkerStyles() {
+        const s = pz ? pz.getScale() : 1;
+        const anti = s > 1 ? 1 / s : 1;
+        document.querySelectorAll('.marker').forEach(m => {
+            const gain = parseInt(m.dataset.size) || 0;
+            m.querySelector('.label').style.fontSize = (baseMarkerFontSize + (gain * 1.5)) + 'px';
+            m.style.transform = `translate(-50%, -50%) scale(${anti})`;
+        });
+    }
+
+    function flyTo(pts) {
+        const img = document.getElementById('bg-map'), c = document.getElementById('map-section');
+        if (!img.offsetWidth) return;
+        let tx = 0, ty = 0; pts.forEach(p => { tx += parseFloat(p.x); ty += parseFloat(p.y); });
+        const px = (tx/pts.length/100)*img.offsetWidth, py = (ty/pts.length/100)*img.offsetHeight;
+        const sc = pz.getScale();
+        pz.pan((c.clientWidth/2)/sc - px, (c.clientHeight/2)/sc - py, { animate: true });
+    }
+
+    function updateMinScale() {
+        const img = document.getElementById('bg-map'), c = document.getElementById('map-section');
+        if (!img.offsetWidth) return;
+        const min = Math.max(c.clientWidth / img.offsetWidth, c.clientHeight / img.offsetHeight);
+        pz.setOptions({ minScale: min });
+        if (pz.getScale() < min) pz.zoom(min, { animate: true });
+    }
+
+    function syncOverlay() {
+        const img = document.getElementById('bg-map'), ov = document.getElementById('overlay-container');
+        ov.style.width = img.offsetWidth + 'px'; ov.style.height = img.offsetHeight + 'px';
+    }
+
     function toggleFab() { const m = document.getElementById('fab-menu'); m.style.display = m.style.display === 'none' ? 'flex' : 'none'; }
     function resetView() { pz.reset(); applyMarkerStyles(); refreshCollision(); }
 
     window.onload = async () => {
-        const el = document.getElementById('panzoom-element'), mapSection = document.getElementById('map-section');
+        const el = document.getElementById('panzoom-element');
+        pz = Panzoom(el, { maxScale: 8, contain: 'outside' });
+        el.addEventListener('panzoomchange', () => { applyMarkerStyles(); refreshCollision(); });
+        document.getElementById('map-section').addEventListener('wheel', pz.zoomWithWheel);
         
-        pz = Panzoom(el, { 
-            maxScale: 8, 
-            // contain: 'outside' 
-        });
-
-        el.addEventListener('panzoomchange', () => { applyMarkerStyles(); refreshCollision(); updateDebugDisplay(); });
-        mapSection.addEventListener('mousemove', (e) => updateDebugDisplay(e.clientX, e.clientY));
-        mapSection.addEventListener('wheel', pz.zoomWithWheel);
-        
-        const res = await fetch(`folder.csv?t=${Date.now()}`); const folders = parseCSV(await res.text()).slice(1);
-        const select = document.getElementById('folder-select'); select.innerHTML = '<option value="">-- 請選擇史地章節 --</option>';
+        const res = await fetch(`folder.csv?t=${Date.now()}`);
+        const folders = parseCSV(await res.text()).slice(1);
+        const select = document.getElementById('folder-select');
+        select.innerHTML = '<option value="">-- 請選擇史地章節 --</option>';
         folders.forEach(f => { if(f[0]) { const opt = document.createElement('option'); opt.value = f[0]; opt.innerText = f[1] || f[0]; select.appendChild(opt); } });
-        const last = localStorage.getItem('lastBibleFolder'); if (last) { select.value = last; loadProject(last); }
+        const last = localStorage.getItem('lastBibleFolder');
+        if (last) { select.value = last; loadProject(last); }
         initResizers();
     };
 </script>
