@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V10.8.0b</title>
+    <title>亞伯拉罕史地互動地圖 V10.8.0d</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -22,7 +22,7 @@
 
         #map-section { flex: 1; position: relative; overflow: hidden; background: #e5d3b3; }
         
-        /* 10.8.0b 根源修正：統一使用左上角座標系 */
+        /* V10.8.0d：維持左上角基準，確保 flyTo 線性對位 */
         #panzoom-element { 
             display: inline-block; 
             position: relative; 
@@ -344,7 +344,7 @@
         });
     }
 
-/* 10.8.0b：手術刀協議修正 - 線性化 FlyTo */
+/* V10.8.0d：核心公式保持線性對位 */
 function flyTo(pts) {
     const img = document.getElementById('bg-map'), c = document.getElementById('map-section');
     if (!img.offsetWidth) return;
@@ -355,20 +355,19 @@ function flyTo(pts) {
     const py = (ty / pts.length / 100) * img.offsetHeight;
     const sc = pz.getScale();
 
-    // 根源修正公式：在 origin 0,0 基準下回歸線性對位
+    // 在 0 0 基準點下，精確將座標移動到容器中心
     const finalX = (c.clientWidth / 2) / sc - px;
     const finalY = (c.clientHeight / 2) / sc - py;
     
     pz.pan(finalX, finalY, { animate: true });
 
-    // 完全保留原有的除錯資訊更新邏輯與格式
     setTimeout(() => {
         const panAfter = pz.getPan();
         const containerXAfter = (px * sc) + panAfter.x;
         const viewCenterX = c.clientWidth / 2;
         const debugEl = document.getElementById('debug-info');
         if (debugEl) {
-            debugEl.innerText = `(${sc.toFixed(2)} | W:${img.offsetWidth} | 圖x:${px.toFixed(0)} | 中:${viewCenterX.toFixed(0)} | 前:-- | 後:${containerXAfter.toFixed(0)})`;
+            debugEl.innerText = `(${sc.toFixed(2)} | W:${img.offsetWidth} | 圖x:${px.toFixed(0)} | 中:${viewCenterX.toFixed(0)} | 後:${containerXAfter.toFixed(0)})`;
         }
     }, 350);
 }
@@ -389,15 +388,14 @@ function flyTo(pts) {
     function toggleFab() { const m = document.getElementById('fab-menu'); m.style.display = m.style.display === 'none' ? 'flex' : 'none'; }
     function resetView() { pz.reset(); applyMarkerStyles(); refreshCollision(); }
 
-    /* V10.8.0b 最終行為修正：鎖定線性座標系，恢復視覺中心縮放感 */
+    /* V10.8.0d 行為修正：移除 origin: '0 0'，恢復自然的滑鼠縮放感 */
     window.onload = async () => {
         const el = document.getElementById('panzoom-element');
         
-        // --- 10.8.0b 變動：加入 origin: '0 0' 參數以在線性座標系下補償縮放中心感 ---
+        // --- V10.8.0d 變動：移除 origin 鎖定，由 Panzoom 自動計算縮放偏移 ---
         pz = Panzoom(el, { 
             maxScale: 8, 
-            contain: false,
-            origin: '0 0' 
+            contain: false
         });
         
         el.addEventListener('panzoomchange', () => { 
