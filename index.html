@@ -339,31 +339,38 @@
         });
     }
 
-    // --- V10.8.0f 修正區塊：仿射變換 FlyTo ---
-    function flyTo(pts) {
-        const el = document.getElementById('panzoom-element');
-        const img = document.getElementById('bg-map');
-        const c = document.getElementById('map-section');
-        if (!img.offsetWidth || !pts.length) return;
-        
-        let tx = 0, ty = 0;
-        pts.forEach(p => { tx += parseFloat(p.x); ty += parseFloat(p.y); });
-        const px = (tx / pts.length / 100) * img.offsetWidth;
-        const py = (ty / pts.length / 100) * img.offsetHeight;
+    /* V10.8.0g：核心邏輯修正 - 採用標準線性投影矩陣公式 */
+function flyTo(pts) {
+    const img = document.getElementById('bg-map'), c = document.getElementById('map-section');
+    if (!img.offsetWidth || !img.naturalWidth) return; // 確保圖片已加載
+    
+    // 1. 計算目標點在地圖原始尺寸下的像素座標 (px, py)
+    let tx = 0, ty = 0;
+    pts.forEach(p => { tx += parseFloat(p.x); ty += parseFloat(p.y); });
+    const px = (tx / pts.length / 100) * img.offsetWidth;
+    const py = (ty / pts.length / 100) * img.offsetHeight;
+    
+    // 2. 取得當前縮放倍率
+    const sc = pz.getScale();
 
-        const sc = pz.getScale();
-        const ox = el.offsetWidth / 2;
-        const oy = el.offsetHeight / 2;
-        const cx = c.clientWidth / 2;
-        const cy = c.clientHeight / 2;
+    // 3. 正規線性投影公式 (Linear Projection): 
+    // 目標 Pan = 容器中心 - (地圖座標 * 縮放倍率)
+    const finalX = (c.clientWidth / 2) - (px * sc);
+    const finalY = (c.clientHeight / 2) - (py * sc);
+    
+    // 執行平移
+    pz.pan(finalX, finalY, { animate: true });
 
-        const finalX = cx - ox - (px - ox) * sc;
-        const finalY = cy - oy - (py - oy) * sc;
-
-        if (!isNaN(finalX) && !isNaN(finalY)) {
-            pz.pan(finalX, finalY, { animate: true });
+    // Debug 輸出：驗證縮放後的點是否真的落在容器中心
+    setTimeout(() => {
+        const panAfter = pz.getPan();
+        const visualX = (px * sc) + panAfter.x; // 縮放後的點 + 位移 = 最終螢幕位置
+        const debugEl = document.getElementById('debug-info');
+        if (debugEl) {
+            debugEl.innerText = `Scale:${sc.toFixed(2)} | 目標中心:${(c.clientWidth/2).toFixed(0)} | 實際落點:${visualX.toFixed(0)}`;
         }
-    }
+    }, 350);
+}
 
     function updateMinScale() {
         const img = document.getElementById('bg-map'), c = document.getElementById('map-section');
