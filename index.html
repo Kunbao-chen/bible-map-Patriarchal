@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V10.8.0i</title>
+    <title>亞伯拉罕史地互動地圖 V10.8.0c</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -22,19 +22,14 @@
 
         #map-section { flex: 1; position: relative; overflow: hidden; background: #e5d3b3; }
         
-        /* V10.8.0i：確保容器與圖片物理尺寸完全一致，消除行內間隙 */
+        /* V10.8.0c 根源修正：統一使用左上角座標系，確保線性 FlyTo */
         #panzoom-element { 
             display: inline-block; 
             position: relative; 
             transform-origin: 0 0 !important; 
         }
         
-        #bg-map { 
-            display: block; 
-            max-width: none; 
-            user-select: none; 
-            vertical-align: middle;
-        }
+        #bg-map { display: block; max-width: none; user-select: none; }
         
         .marker { position: absolute; transform-origin: center; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; z-index: 10; cursor: pointer; }
         .marker .dot { width: 5px; height: 5px; background: rgba(93,64,55,0.5); border-radius: 50%; margin-bottom: 2px; }
@@ -349,37 +344,30 @@
         });
     }
 
-/* V10.8.0i：核心邏輯修正 - 物理座標歸一化對位 */
+/* V10.8.0c：核心邏輯修正 - 在 0,0 座標系下實現精確線性對位 */
 function flyTo(pts) {
-    const el = document.getElementById('panzoom-element');
-    const c = document.getElementById('map-section');
-    if (!el.offsetWidth) return;
-
-    // 1. 取得目標點在「原始比例」下的位置 (0~1)
+    const img = document.getElementById('bg-map'), c = document.getElementById('map-section');
+    if (!img.offsetWidth) return;
+    
     let tx = 0, ty = 0;
     pts.forEach(p => { tx += parseFloat(p.x); ty += parseFloat(p.y); });
-    const ratioX = (tx / pts.length) / 100;
-    const ratioY = (ty / pts.length) / 100;
-
-    // 2. 取得當前縮放倍率
+    const px = (tx / pts.length / 100) * img.offsetWidth;
+    const py = (ty / pts.length / 100) * img.offsetHeight;
     const sc = pz.getScale();
 
-    // 3. 核心修正：使用 Panzoom 容器的寬高計算投影位置
-    const targetX = (el.offsetWidth * ratioX) * sc;
-    const targetY = (el.offsetHeight * ratioY) * sc;
-
-    // 4. 標準線性投影公式：Pan = 容器中心 - (縮放後的點)
-    const finalX = (c.clientWidth / 2) - targetX;
-    const finalY = (c.clientHeight / 2) - targetY;
+    // 線性公式：將目標點對齊容器中心 (0,0 原點條件下)
+    const finalX = (c.clientWidth / 2) / sc - px;
+    const finalY = (c.clientHeight / 2) / sc - py;
     
     pz.pan(finalX, finalY, { animate: true });
 
-    // Debug 資訊更新
     setTimeout(() => {
-        const pan = pz.getPan();
+        const panAfter = pz.getPan();
+        const containerXAfter = (px * sc) + panAfter.x;
+        const viewCenterX = c.clientWidth / 2;
         const debugEl = document.getElementById('debug-info');
         if (debugEl) {
-            debugEl.innerText = `V10.8.0i | Scale:${sc.toFixed(2)} | X:${pan.x.toFixed(0)} | Y:${pan.y.toFixed(0)}`;
+            debugEl.innerText = `(${sc.toFixed(2)} | W:${img.offsetWidth} | 圖x:${px.toFixed(0)} | 中:${viewCenterX.toFixed(0)} | 前:-- | 後:${containerXAfter.toFixed(0)})`;
         }
     }, 350);
 }
@@ -400,9 +388,11 @@ function flyTo(pts) {
     function toggleFab() { const m = document.getElementById('fab-menu'); m.style.display = m.style.display === 'none' ? 'flex' : 'none'; }
     function resetView() { pz.reset(); applyMarkerStyles(); refreshCollision(); }
 
+    /* V10.8.0c 最終行為修正：鎖定線性座標系，恢復視覺中心縮放感 */
     window.onload = async () => {
         const el = document.getElementById('panzoom-element');
         
+        // --- V10.8.0c 變動：加入 origin: '0 0' 參數，補償 CSS 基準點歸零帶來的縮放偏移 ---
         pz = Panzoom(el, { 
             maxScale: 8, 
             contain: false,
