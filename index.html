@@ -144,9 +144,9 @@
 </div>
 
 <script>
-    let pz, eventData = [], filteredData = [], allCoords = [], locFreq = {}, currentFolder = '', currentMapIdx = -1, currentEventIdx = -1;
+    let pz, eventData = [], filteredData = [], allCoords = [], currentFolder = '', currentMapIdx = -1, currentEventIdx = -1;
 
-    // 手術刀植入：精確 CSV 解析 (來自 sorter.html)
+    // --- 手術刀：植入精確解析機制 ---
     function splitCSVLine(line) {
         const result = [];
         let cur = '', inQuote = false;
@@ -169,18 +169,13 @@
         try {
             const dRes = await fetch(`${folder}/data.csv?t=${Date.now()}`);
             const dText = await dRes.text();
-            // 手術刀植入：改用 splitCSVLine
+            // --- 手術刀：應用 splitCSVLine ---
             const rows = dText.split('\n').filter(l => l.trim()).map(line => splitCSVLine(line));
             const dataRows = rows.slice(1);
             
-            locFreq = {};
             eventData = dataRows.map(r => {
                 const obj = { id: r[0], time: r[1], event: r[2], loc: r[3], script: r[4], note: r[5] };
                 obj._searchStr = Object.values(obj).join('|').toLowerCase();
-                obj.loc.split(/[+→]/).forEach(n => {
-                    const clean = n.replace(/\(.*?\)/g, '').trim();
-                    if(clean) locFreq[clean] = (locFreq[clean] || 0) + 1;
-                });
                 return obj;
             });
 
@@ -190,7 +185,7 @@
                     const cRes = await fetch(`${folder}/coords-${i}.csv?t=${Date.now()}`);
                     if (!cRes.ok) break;
                     const cText = await cRes.text();
-                    // 手術刀植入：改用 splitCSVLine
+                    // --- 手術刀：應用 splitCSVLine ---
                     const cRows = cText.split('\n').filter(l => l.trim()).map(line => splitCSVLine(line));
                     const header = cRows[0];
                     const sIdx = header.indexOf("Size"), nIdx = header.indexOf("地名"), xIdx = header.indexOf("百分比X"), yIdx = header.indexOf("百分比Y");
@@ -275,7 +270,7 @@
             }
             m.className = `marker ${isHighlight ? 'highlight' : ''} ${data.size > 2 ? 'region-type' : ''}`;
             m.style.left = data.x + '%'; m.style.top = data.y + '%';
-            m.dataset.size = data.size;
+            m.dataset.size = data.size; // 用於排序
         });
 
         applyMarkerStyles();
@@ -288,7 +283,7 @@
         let tx = 0, ty = 0;
         pts.forEach(p => { tx += parseFloat(p.x); ty += parseFloat(p.y); });
         const px = (tx/pts.length/100)*img.offsetWidth, py = (ty/pts.length/100)*img.offsetHeight, sc = pz.getScale();
-        // 手術刀：維持 V11.0.0 正確公式
+        // --- 手術刀：維持 V11.0.0 正確公式 ---
         pz.pan((c.clientWidth/2) - (px * sc), (c.clientHeight/2) - (py * sc), { animate: true });
     }
 
@@ -374,7 +369,7 @@
         });
     }
 
-    // 手術刀植入：sorter.html 的排序權重邏輯
+    // --- 手術刀：植入 sorter.html 的排序權重邏輯 ---
     function refreshCollision() {
         const markers = Array.from(document.querySelectorAll('.marker')), occupied = [];
         const dText = eventData.map(d => d._searchStr).join(' ');
@@ -383,7 +378,6 @@
             const isHa = a.classList.contains('highlight'), isHb = b.classList.contains('highlight');
             if (isHa !== isHb) return isHa ? -1 : 1;
             
-            // 排序：1. Size 小 > 2. 次數多
             const sA = parseInt(a.dataset.size) || 0, sB = parseInt(b.dataset.size) || 0;
             if (sA !== sB) return sA - sB; 
             
@@ -393,7 +387,9 @@
         });
 
         markers.forEach(m => {
-            const label = m.querySelector('.label'), rect = label.getBoundingClientRect();
+            const label = m.querySelector('.label');
+            if (!label) return;
+            const rect = label.getBoundingClientRect();
             const overlap = occupied.some(o => !(rect.right < o.left || rect.left > o.right || rect.bottom < o.top || rect.top > o.bottom));
             if (overlap && !m.classList.contains('highlight')) {
                 label.style.opacity = "0"; label.style.pointerEvents = "none";
@@ -421,7 +417,7 @@
 
     window.onload = async () => {
         const el = document.getElementById('panzoom-element');
-        // 手術刀：維持 contain: 'outside'
+        // --- 手術刀：維持 contain: 'outside' ---
         pz = Panzoom(el, { maxScale: 8, contain: 'outside' });
         el.addEventListener('panzoomchange', () => { applyMarkerStyles(); refreshCollision(); });
         document.getElementById('map-section').addEventListener('wheel', pz.zoomWithWheel);
