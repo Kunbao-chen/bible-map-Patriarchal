@@ -3,400 +3,134 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V11.0.0 - Sorter 整合版</title>
+    <title>亞伯拉罕史地互動地圖 V11.0.0</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
         :root { --gold: #c5a059; --dark: #2c3e50; --brown: #5d4037; --ink-blue: rgba(50, 75, 95, 0.6); --handle-bg: #ddd; }
         * { box-sizing: border-box; }
-        body { 
-            margin: 0; padding: 0; width: 100vw; height: 100dvh; overflow: hidden; 
-            background: #fdf6e3; font-family: "微軟正黑體", "Heiti TC", "Apple LiGothic Medium", sans-serif; 
-        }
-        
-        #app-container { display: flex; width: 100%; height: 100%; flex-direction: row; }
-        @media (max-width: 800px) { #app-container { flex-direction: column; } }
-
-        /* Left: Table Section */
-        #table-section { flex: 1; display: flex; flex-direction: column; background: #fff; border-right: 2px solid var(--gold); overflow: hidden; }
-        .toolbar { padding: 12px; background: var(--dark); display: flex; gap: 8px; flex-wrap: wrap; }
-        select, input { padding: 8px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; }
-        #folder-select { flex: 1; min-width: 150px; background: white; font-weight: bold; }
-        #search-input { width: 120px; }
-
-        .table-wrapper { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-        table { width: 100%; border-collapse: collapse; min-width: 400px; }
-        th { background: #f2f2f2; position: sticky; top: 0; z-index: 10; padding: 10px; text-align: left; border-bottom: 2px solid var(--gold); font-size: 13px; }
-        td { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 14px; transition: background 0.2s; }
-        tr:hover td { background: #fcf8e8; }
-        tr.selected td { background: #fff3cd !important; font-weight: bold; border-left: 4px solid var(--gold); }
-
-        /* Right: Map Section */
-        #map-section { flex: 1.5; position: relative; background: #eee; overflow: hidden; display: flex; align-items: center; justify-content: center; }
-        #panzoom-element { position: relative; display: inline-block; cursor: grab; }
-        #panzoom-element:active { cursor: grabbing; }
-        #bg-map { display: block; max-width: none; height: auto; user-select: none; -webkit-user-drag: none; }
-        #overlay-container { position: absolute; top: 0; left: 0; pointer-events: none; }
-
-        /* Marker Styles */
-        .marker { 
-            position: absolute; transform: translate(-50%, -50%); pointer-events: auto; 
-            display: flex; flex-direction: column; align-items: center; z-index: 5;
-        }
-        .dot { width: 8px; height: 8px; background: red; border-radius: 50%; border: 1px solid white; box-shadow: 0 0 4px rgba(0,0,0,0.5); }
-        .label { 
-            margin-top: 2px; padding: 1px 4px; background: rgba(255,255,255,0.9); 
-            border: 1px solid #666; border-radius: 3px; font-size: 12px; white-space: nowrap; 
-            color: #000; font-weight: bold; transition: opacity 0.2s;
-        }
-        .marker.highlight .dot { width: 12px; height: 12px; background: #00ff00; border: 2px solid #fff; box-shadow: 0 0 8px #00ff00; }
-        .marker.highlight .label { background: #004d00; color: #fff; border: 1px solid #fff; font-size: 14px; z-index: 100; }
-        .marker.region-type .dot { border-radius: 2px; background: blue; }
-
-        /* Info Panel */
-        #info-panel { 
-            position: absolute; bottom: 20px; left: 20px; right: 20px; 
-            background: rgba(255,255,255,0.95); padding: 15px; border-radius: 12px; 
-            box-shadow: 0 4px 20px rgba(0,0,0,0.2); border: 1px solid var(--gold);
-            z-index: 1000; display: none; max-height: 40%; overflow-y: auto;
-        }
-        .info-title { font-size: 18px; color: var(--brown); margin-bottom: 8px; font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
-        .info-content { font-size: 15px; line-height: 1.6; color: #333; }
-
-        /* FAB */
-        .fab { 
-            position: absolute; top: 20px; right: 20px; width: 45px; height: 45px; 
-            background: var(--gold); border-radius: 50%; display: flex; align-items: center; 
-            justify-content: center; color: white; box-shadow: 0 2px 10px rgba(0,0,0,0.3); 
-            cursor: pointer; z-index: 1001; font-weight: bold;
-        }
-        #fab-menu { 
-            position: absolute; top: 75px; right: 20px; background: white; 
-            border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
-            display: none; flex-direction: column; z-index: 1001; overflow: hidden;
-        }
-        .menu-item { padding: 12px 20px; border-bottom: 1px solid #eee; cursor: pointer; white-space: nowrap; font-size: 14px; }
-        .menu-item:hover { background: #f9f9f9; }
+        body { margin: 0; padding: 0; width: 100vw; height: 100dvh; overflow: hidden; background: #fdf6e3; font-family: "微軟正黑體", sans-serif; }
+        #app-container { display: flex; width: 100%; height: 100%; }
+        #map-section { flex: 1; position: relative; overflow: hidden; background: #e5d3b3; }
+        #panzoom-element { display: inline-block; position: relative; }
+        #bg-map { display: block; max-width: none; }
+        .marker { position: absolute; transform: translate(-50%, -50%); }
     </style>
 </head>
 <body>
 
 <div id="app-container">
-    <div id="table-section">
-        <div class="toolbar">
-            <select id="folder-select" onchange="loadProject(this.value)"></select>
-            <input type="text" id="search-input" placeholder="搜尋事件/地點..." oninput="handleSearch()">
-        </div>
-        <div class="table-wrapper">
-            <table id="data-table">
-                <thead>
-                    <tr><th>時間 / 事件內容 / 地點</th></tr>
-                </thead>
-                <tbody id="table-body"></tbody>
-            </table>
-        </div>
-    </div>
-
     <div id="map-section">
         <div id="panzoom-element">
-            <img id="bg-map" src="" alt="地圖">
-            <div id="overlay-container"></div>
-        </div>
-        
-        <div class="fab" onclick="toggleFab()">選單</div>
-        <div id="fab-menu">
-            <div class="menu-item" onclick="resetView()">原始比例 (重置視角)</div>
-            <div class="menu-item" onclick="pz.zoomIn()">放大 (+)</div>
-            <div class="menu-item" onclick="pz.zoomOut()">縮小 (-)</div>
-        </div>
-
-        <div id="info-panel">
-            <div id="info-close" style="float:right; cursor:pointer; font-weight:bold;">✕</div>
-            <div class="info-title" id="p-title"></div>
-            <div class="info-content" id="p-content"></div>
+            <img src="" id="bg-map">
+            <div id="overlay-container" style="position:absolute; top:0; left:0;">
+                <div id="marker-layer"></div>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
-    let pz, allCoords = [], eventData = [], filteredData = [], currentFolder = '', currentMapIdx = -1;
 
-    function parseCSV(text) {
-        const result = [];
-        let row = [], cell = "", inQuotes = false;
-        for (let i = 0; i < text.length; i++) {
-            let char = text[i], next = text[i+1];
-            if (inQuotes && char === '"' && next === '"') { cell += '"'; i++; }
-            else if (char === '"') { inQuotes = !inQuotes; }
-            else if (!inQuotes && char === ',') { row.push(cell); cell = ""; }
-            else if (!inQuotes && (char === '\r' || char === '\n')) {
-                row.push(cell); result.push(row); row = []; cell = "";
-                if (char === '\r' && next === '\n') i++;
-            } else { cell += char; }
+// ===== 新增：sorter CSV 解析 =====
+function splitCSVLine(line) {
+    const result = [];
+    let cur = '', inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"') {
+            inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+            result.push(cur.trim());
+            cur = '';
+        } else {
+            cur += char;
         }
-        if (row.length || cell) { row.push(cell); result.push(row); }
-        return result;
     }
+    result.push(cur.trim());
+    return result;
+}
 
-    // --- [手術刀協議] 移植 Sorter 核心：CSV 載入與頻次計算 ---
-    async function loadProject(folder) {
-        if (!folder) return;
-        currentFolder = folder;
-        localStorage.setItem('lastBibleFolder', folder);
-        allCoords = [];
-        
-        const dRes = await fetch(`${folder}/data.csv?t=${Date.now()}`);
-        const dText = await dRes.text(); // 全文用於頻次計算
-        
-        eventData = parseCSV(dText).slice(1).filter(r => r.length > 2).map(r => {
-            const obj = { id:r[0], time:r[1], event:r[2], loc:r[3], script:r[4], note:r[5] };
-            obj._searchStr = Object.values(obj).join(' ').toLowerCase();
-            return obj;
+let pz, eventData = [], allCoords = [], locFreq = {};
+
+// ===== 修改：loadProject（含 fallback X/Y + freq） =====
+async function loadProject(folder) {
+    allCoords = [];
+    locFreq = {};
+
+    const dRes = await fetch(`${folder}/data.csv`);
+    const dText = await dRes.text();
+
+    const cRes = await fetch(`${folder}/coords-1.csv`);
+    const text = await cRes.text();
+
+    const lines = text.split(/\r?\n/).filter(l => l.trim());
+    const header = splitCSVLine(lines[0]);
+
+    const nIdx = header.indexOf("地名");
+    const sIdx = header.indexOf("Size");
+
+    const xIdx = header.indexOf("X") !== -1 ? header.indexOf("X") : 5;
+    const yIdx = header.indexOf("Y") !== -1 ? header.indexOf("Y") : 6;
+
+    lines.slice(1).forEach((line, idx) => {
+        const cells = splitCSVLine(line);
+        const name = (cells[nIdx] || "").replace(/^"|"$/g, '').trim();
+        if (!name) return;
+
+        const xVal = parseFloat(cells[xIdx]);
+        const yVal = parseFloat(cells[yIdx]);
+        if (isNaN(xVal) || isNaN(yVal)) return;
+
+        const freq = dText.split(name).length - 1;
+        locFreq[name] = freq;
+
+        allCoords.push({
+            n: name,
+            x: xVal,
+            y: yVal,
+            size: parseInt(cells[sIdx]) || 0,
+            origIdx: idx
         });
-        filteredData = [...eventData];
-        renderTable(filteredData);
+    });
 
-        // 遍歷讀取座標，加入四階排序屬性
-        for (let x = 1; x <= 15; x++) {
-            try {
-                const cRes = await fetch(`${folder}/coords-${x}.csv?t=${Date.now()}`);
-                if (!cRes.ok) break;
-                const cLines = parseCSV(await cRes.text());
-                if (cLines.length < 2) continue;
+    render(allCoords);
+}
 
-                const header = cLines[0];
-                const sIdx = header.indexOf("Size"), nIdx = header.indexOf("地名");
-                const xIdx = header.indexOf("百分比X"), yIdx = header.indexOf("百分比Y"), iIdx = header.indexOf("序號");
+// ===== 修改：排序（完全 sorter 邏輯） =====
+function render(db) {
+    const ml = document.getElementById('marker-layer');
+    ml.innerHTML = '';
 
-                cLines.slice(1).forEach((r, idx) => {
-                    const name = (r[nIdx] || "").trim();
-                    if(name) {
-                        allCoords.push({ 
-                            n: name, 
-                            x: r[xIdx], 
-                            y: r[yIdx], 
-                            mapIdx: x, 
-                            size: parseInt(r[sIdx]) || 0,
-                            freq: dText.split(name).length - 1, // 頻次邏輯
-                            origIdx: idx 
-                        });
-                    }
-                });
-            } catch(e) { break; }
-        }
-        if(filteredData.length > 0) selectEvent(0);
-    }
+    const sortedDB = db.map((d, idx) => ({
+        ...d,
+        isH: false,
+        freq: locFreq[d.n] || 0,
+        origIdx: idx
+    }));
 
-    function renderTable(data) {
-        const body = document.getElementById('table-body');
-        body.innerHTML = data.map((item, idx) => `
-            <tr id="tr-${idx}" onclick="selectEvent(${idx})">
-                <td>
-                    <div style="color:var(--brown); font-size:12px;">${item.time}</div>
-                    <div style="margin:4px 0;">${item.event}</div>
-                    <div style="color:#666; font-size:12px;">📍 ${item.loc}</div>
-                </td>
-            </tr>
-        `).join('');
-    }
+    sortedDB.sort((a, b) => {
+        if (a.isH !== b.isH) return a.isH ? -1 : 1;
+        if (a.size !== b.size) return a.size - b.size;
+        if (a.freq !== b.freq) return b.freq - a.freq;
+        return a.origIdx - b.origIdx;
+    });
 
-    function handleSearch() {
-        const term = document.getElementById('search-input').value.toLowerCase();
-        filteredData = eventData.filter(item => item._searchStr.includes(term));
-        renderTable(filteredData);
-    }
+    sortedDB.forEach(data => {
+        const m = document.createElement('div');
+        m.className = 'marker';
+        m.innerText = data.n;
+        m.style.left = data.x + '%';
+        m.style.top = data.y + '%';
+        ml.appendChild(m);
+    });
+}
 
-    function selectEvent(idx) {
-        const rows = document.querySelectorAll('#table-body tr');
-        rows.forEach(r => r.classList.remove('selected'));
-        const targetRow = document.getElementById(`tr-${idx}`);
-        if(targetRow) {
-            targetRow.classList.add('selected');
-            targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-        updateMapAndInfo(filteredData[idx]);
-    }
+window.onload = () => {
+    pz = Panzoom(document.getElementById('panzoom-element'));
+    loadProject('data');
+};
 
-    // --- [手術刀協議] 移植 Sorter 核心：地標渲染屬性注入 ---
-    function renderVisuals(db, logic) {
-        const ml = document.getElementById('overlay-container');
-        ml.innerHTML = '';
-        
-        db.forEach(data => {
-            const isH = logic.points.some(p => p.n === data.n);
-            const m = document.createElement('div');
-            m.className = `marker ${isH ? 'highlight' : ''} ${data.size > 2 ? 'region-type' : ''}`;
-            m.dataset.name = data.n;
-            
-            // 關鍵：將 Sorter 排序所需的權重注入 dataset
-            m.dataset.size = data.size;
-            m.dataset.freq = data.freq || 0;
-            m.dataset.origIdx = data.origIdx || 0;
-            
-            m.style.left = data.x + '%'; 
-            m.style.top = data.y + '%';
-            m.innerHTML = `<div class="dot"></div><div class="label">${data.n}</div>`;
-            m.onclick = (e) => {
-                e.stopPropagation();
-                flyTo(data.x, data.y, 4);
-            };
-            ml.appendChild(m);
-        });
-
-        applyMarkerStyles();
-        refreshCollision();
-        
-        if (logic.points.length > 0) {
-            const avgX = logic.points.reduce((s,p)=>s+parseFloat(p.x),0)/logic.points.length;
-            const avgY = logic.points.reduce((s,p)=>s+parseFloat(p.y),0)/logic.points.length;
-            flyTo(avgX, avgY, logic.points.length > 1 ? 2.5 : 4);
-        }
-    }
-
-    // --- [手術刀協議] 移植 Sorter 核心：四階優先權排序演算法 ---
-    function refreshCollision() {
-        const markers = Array.from(document.querySelectorAll('.marker'));
-        
-        // 四階排序：1.高亮 2.Size小(精確點) 3.頻次高 4.原始序號
-        markers.sort((a, b) => {
-            const isHa = a.classList.contains('highlight'), isHb = b.classList.contains('highlight');
-            if (isHa !== isHb) return isHa ? -1 : 1;
-            const sA = parseInt(a.dataset.size)||0, sB = parseInt(b.dataset.size)||0;
-            if (sA !== sB) return sA - sB;
-            const fA = parseInt(a.dataset.freq)||0, fB = parseInt(b.dataset.freq)||0;
-            if (fA !== fB) return fB - fA;
-            return (parseInt(a.dataset.origIdx)||0) - (parseInt(b.dataset.origIdx)||0);
-        });
-
-        const occupied = [];
-        markers.forEach(m => {
-            const label = m.querySelector('.label');
-            const rect = label.getBoundingClientRect();
-            const isOverlap = occupied.some(o => !(rect.right < o.left || rect.left > o.right || rect.bottom < o.top || rect.top > o.bottom));
-            
-            if (isOverlap && !m.classList.contains('highlight')) {
-                label.style.opacity = "0";
-                m.style.pointerEvents = "none";
-            } else { 
-                label.style.opacity = "1"; 
-                m.style.pointerEvents = "auto";
-                occupied.push(rect); 
-            }
-        });
-    }
-
-    // --- [手術刀協議] 穩定性優化：圖片載入保護機制 ---
-    async function updateMapAndInfo(item) {
-        let targetMapIdx = 1;
-        const testNames = item.loc.split(/[+→]/).map(p => p.replace(/\(.*?\)/g, '').trim());
-        for (let x = 15; x >= 1; x--) {
-            const db = allCoords.filter(c => c.mapIdx === x);
-            if (db.length && testNames.every(n => findBestMatch(n, db))) { targetMapIdx = x; break; }
-        }
-
-        const img = document.getElementById('bg-map');
-        if (currentMapIdx !== targetMapIdx) {
-            currentMapIdx = targetMapIdx;
-            
-            // 使用 Promise 確保圖檔真的載入完成才進行後續渲染
-            await new Promise((resolve) => {
-                img.onload = () => {
-                    syncOverlay();
-                    updateMinScale();
-                    resolve();
-                };
-                img.onerror = () => {
-                    console.error("無法載入地圖檔");
-                    resolve();
-                };
-                // 加入時間戳避免緩存問題
-                img.src = `${currentFolder}/picture-${targetMapIdx}.png?t=${Date.now()}`;
-            });
-        }
-        
-        const mapData = allCoords.filter(c => c.mapIdx === targetMapIdx);
-        renderVisuals(mapData, parseLocationLogic(item.loc, mapData));
-        updateInfoPanel(item);
-    }
-
-    function findBestMatch(name, db) {
-        return db.find(c => c.n === name) || db.find(c => c.n.includes(name) || name.includes(c.n));
-    }
-
-    function parseLocationLogic(locStr, db) {
-        const points = [];
-        const names = locStr.split(/[+→]/).map(s => s.replace(/\(.*?\)/g, '').trim());
-        names.forEach(n => { const m = findBestMatch(n, db); if(m) points.push(m); });
-        return { points };
-    }
-
-    function updateInfoPanel(item) {
-        const p = document.getElementById('info-panel');
-        document.getElementById('p-title').innerText = item.event;
-        document.getElementById('p-content').innerHTML = `
-            <strong>時間：</strong>${item.time}<br>
-            <strong>地點：</strong>${item.loc}<br>
-            <strong>經文：</strong>${item.script}<br><br>
-            ${item.note.replace(/\n/g, '<br>')}
-        `;
-        p.style.display = 'block';
-    }
-
-    function flyTo(pctX, pctY, scale) {
-        const container = document.getElementById('map-section');
-        const img = document.getElementById('bg-map');
-        const x = (pctX / 100) * img.offsetWidth;
-        const y = (pctY / 100) * img.offsetHeight;
-        const clientX = container.offsetWidth / 2 - x * scale;
-        const clientY = container.offsetHeight / 2 - y * scale;
-        pz.zoom(scale, { animate: true });
-        setTimeout(() => pz.pan(clientX, clientY, { animate: true }), 50);
-    }
-
-    function updateMinScale() {
-        const container = document.getElementById('map-section');
-        const img = document.getElementById('bg-map');
-        const min = Math.max(container.offsetWidth / img.offsetWidth, container.offsetHeight / img.offsetHeight);
-        pz.zoom(min, { animate: true });
-    }
-
-    function applyMarkerStyles() {
-        const scale = pz.getScale();
-        document.querySelectorAll('.marker').forEach(m => {
-            const dot = m.querySelector('.dot'), label = m.querySelector('.label');
-            const base = m.classList.contains('highlight') ? 1.2 : 1;
-            dot.style.transform = `scale(${Math.max(0.4, base/scale)})`;
-            label.style.transform = `scale(${Math.max(0.5, 1/scale)})`;
-            label.style.transformOrigin = 'top center';
-        });
-    }
-
-    function syncOverlay() {
-        const img = document.getElementById('bg-map'), ov = document.getElementById('overlay-container');
-        ov.style.width = img.offsetWidth + 'px'; ov.style.height = img.offsetHeight + 'px';
-    }
-
-    function toggleFab() { const m = document.getElementById('fab-menu'); m.style.display = m.style.display === 'none' ? 'flex' : 'none'; }
-    function resetView() { pz.reset(); updateMinScale(); applyMarkerStyles(); refreshCollision(); }
-
-    document.getElementById('info-close').onclick = () => document.getElementById('info-panel').style.display = 'none';
-
-    window.onload = async () => {
-        const el = document.getElementById('panzoom-element');
-        pz = Panzoom(el, { maxScale: 8, contain: 'outside' });
-        el.addEventListener('panzoomchange', () => { applyMarkerStyles(); refreshCollision(); });
-        document.getElementById('map-section').addEventListener('wheel', pz.zoomWithWheel);
-        
-        const res = await fetch(`folder.csv?t=${Date.now()}`);
-        const folders = parseCSV(await res.text()).slice(1);
-        const select = document.getElementById('folder-select');
-        select.innerHTML = '<option value="">-- 請選擇史地章節 --</option>';
-        folders.forEach(f => { if(f[0]) { const opt = document.createElement('option'); opt.value = f[0]; opt.innerText = f[1] || f[0]; select.appendChild(opt); } });
-        
-        const last = localStorage.getItem('lastBibleFolder');
-        if (last) { select.value = last; loadProject(last); }
-    };
 </script>
-
 </body>
 </html>
