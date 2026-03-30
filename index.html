@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V11.0.1</title>
+    <title>亞伯拉罕史地互動地圖 V11.0.2</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -146,7 +146,7 @@
 <script>
     let pz, eventData = [], filteredData = [], allCoords = [], locFreq = {}, currentFolder = '', currentMapIdx = -1, currentEventIdx = -1;
 
-    // 手術刀新增：同步自 sorter.html 的精確解析機制
+    // 手術刀植入：精確 CSV 解析 (來自 sorter.html)
     function splitCSVLine(line) {
         const result = [];
         let cur = '', inQuote = false;
@@ -169,7 +169,7 @@
         try {
             const dRes = await fetch(`${folder}/data.csv?t=${Date.now()}`);
             const dText = await dRes.text();
-            // 手術刀修正：改用精確解析處理每一行
+            // 手術刀植入：改用 splitCSVLine
             const rows = dText.split('\n').filter(l => l.trim()).map(line => splitCSVLine(line));
             const dataRows = rows.slice(1);
             
@@ -190,6 +190,7 @@
                     const cRes = await fetch(`${folder}/coords-${i}.csv?t=${Date.now()}`);
                     if (!cRes.ok) break;
                     const cText = await cRes.text();
+                    // 手術刀植入：改用 splitCSVLine
                     const cRows = cText.split('\n').filter(l => l.trim()).map(line => splitCSVLine(line));
                     const header = cRows[0];
                     const sIdx = header.indexOf("Size"), nIdx = header.indexOf("地名"), xIdx = header.indexOf("百分比X"), yIdx = header.indexOf("百分比Y");
@@ -274,7 +275,7 @@
             }
             m.className = `marker ${isHighlight ? 'highlight' : ''} ${data.size > 2 ? 'region-type' : ''}`;
             m.style.left = data.x + '%'; m.style.top = data.y + '%';
-            m.dataset.size = data.size; // 存入 dataset 以便 refreshCollision 讀取
+            m.dataset.size = data.size;
         });
 
         applyMarkerStyles();
@@ -287,6 +288,7 @@
         let tx = 0, ty = 0;
         pts.forEach(p => { tx += parseFloat(p.x); ty += parseFloat(p.y); });
         const px = (tx/pts.length/100)*img.offsetWidth, py = (ty/pts.length/100)*img.offsetHeight, sc = pz.getScale();
+        // 手術刀：維持 V11.0.0 正確公式
         pz.pan((c.clientWidth/2) - (px * sc), (c.clientHeight/2) - (py * sc), { animate: true });
     }
 
@@ -372,7 +374,7 @@
         });
     }
 
-    // 手術刀移植：同步 sorter.html 的優先排序演算法
+    // 手術刀植入：sorter.html 的排序權重邏輯
     function refreshCollision() {
         const markers = Array.from(document.querySelectorAll('.marker')), occupied = [];
         const dText = eventData.map(d => d._searchStr).join(' ');
@@ -381,8 +383,7 @@
             const isHa = a.classList.contains('highlight'), isHb = b.classList.contains('highlight');
             if (isHa !== isHb) return isHa ? -1 : 1;
             
-            // Size 排序 (照 sorter 邏輯：Size 越小表示越精確，優先度越高？
-            // 或是依據您的需求：大的優先(b-a)，請依您的驗證結果調整)
+            // 排序：1. Size 小 > 2. 次數多
             const sA = parseInt(a.dataset.size) || 0, sB = parseInt(b.dataset.size) || 0;
             if (sA !== sB) return sA - sB; 
             
@@ -420,6 +421,7 @@
 
     window.onload = async () => {
         const el = document.getElementById('panzoom-element');
+        // 手術刀：維持 contain: 'outside'
         pz = Panzoom(el, { maxScale: 8, contain: 'outside' });
         el.addEventListener('panzoomchange', () => { applyMarkerStyles(); refreshCollision(); });
         document.getElementById('map-section').addEventListener('wheel', pz.zoomWithWheel);
