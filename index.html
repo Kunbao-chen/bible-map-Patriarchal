@@ -91,14 +91,16 @@
     let pz, eventData = [], filteredData = [], allCoords = [], currentFolder = "";
     const logic = { currentIdx: -1, points: [] };
 
+    // --- 保持 11.0.0 的原始解析邏輯 ---
     function parseCSV(text) {
-        return text.split(/\r?\n/).filter(l => l.trim()).map(line => {
+        return text.split('\n').filter(l => l.trim()).map(line => {
             const result = [];
             let cur = '', inQuotes = false;
             for (let i = 0; i < line.length; i++) {
                 const char = line[i];
                 if (char === '"') inQuotes = !inQuotes;
                 else if (char === ',' && !inQuotes) { result.push(cur.trim()); cur = ''; }
+                else if (char === '\t' && !inQuotes) { result.push(cur.trim()); cur = ''; }
                 else cur += char;
             }
             result.push(cur.trim());
@@ -111,7 +113,7 @@
         currentFolder = folder; localStorage.setItem('lastBibleFolder', folder);
         allCoords = [];
         const dRes = await fetch(`${folder}/data.csv?t=${Date.now()}`);
-        const dataRawText = await dRes.text();
+        const dataRawText = await dRes.text(); // 手術刀：用於頻次統計
         
         eventData = parseCSV(dataRawText).slice(1).filter(r => r.length > 2).map(r => {
             const obj = { id:r[0], time:r[1], event:r[2], loc:r[3], script:r[4], note:r[5] };
@@ -136,11 +138,9 @@
                 rows.slice(1).forEach(r => { 
                     const name = (r[nIdx] || "").replace(/^"|"$/g, '').trim();
                     if(name && r[5]) {
+                        // 手術刀：補上 freq 與 origIdx
                         const freq = dataRawText.split(name).length - 1;
-                        allCoords.push({ 
-                            n: name, x: r[5], y: r[6], mapIdx: x, 
-                            size: parseInt(r[sIdx]) || 0, freq: freq, origIdx: coordIdx++ 
-                        }); 
+                        allCoords.push({ n: name, x: r[5], y: r[6], mapIdx: x, size: parseInt(r[sIdx]) || 0, freq: freq, origIdx: coordIdx++ }); 
                     }
                 });
             } catch(e) { break; }
@@ -171,13 +171,13 @@
             activeRow.classList.add('active');
             activeRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
-        
         const locStr = filteredData[idx].loc;
         logic.points = allCoords.filter(c => locStr.includes(c.n));
         renderVisuals();
         if(logic.points.length > 0) zoomToPoints(logic.points);
     }
 
+    // --- 完全恢復 11.0.0 結構，僅補上 dataset 權重 ---
     function renderVisuals() {
         const ml = document.getElementById('overlay-container');
         const bgMap = document.getElementById('bg-map');
@@ -191,41 +191,27 @@
         allCoords.forEach(data => {
             const isH = logic.points.some(p => p.n === data.n);
             let m = ml.querySelector(`.marker[data-name="${data.n}"]`);
-            
             const currentMapIdx = parseInt(bgMap.src.match(/bg(\d+)\.jpg/)?.[1] || 1);
-            if (data.mapIdx !== currentMapIdx) {
-                if (m) m.style.display = 'none';
-                return;
-            }
+            if (data.mapIdx !== currentMapIdx) { if (m) m.style.display = 'none'; return; }
 
             if (!m) {
-                m = document.createElement('div');
-                m.className = 'marker';
-                m.dataset.name = data.n;
+                m = document.createElement('div'); m.className = 'marker'; m.dataset.name = data.n;
                 m.innerHTML = `<div class="dot"></div><div class="label">${data.n}</div>`;
-                m.onclick = (e) => {
-                    e.stopPropagation();
-                    const input = document.getElementById('search-input');
-                    input.classList.add('open');
-                    input.value = data.n;
-                    handleSearch(data.n);
-                };
+                m.onclick = (e) => { e.stopPropagation(); document.getElementById('search-input').classList.add('open'); handleSearch(data.n); };
                 ml.appendChild(m);
             }
             m.style.display = 'flex';
             m.className = `marker ${isH ? 'highlight' : ''} ${data.size > 2 ? 'region-type' : ''}`;
             m.style.left = data.x + '%'; m.style.top = data.y + '%';
-            
-            m.dataset.size = data.size;
-            m.dataset.freq = data.freq;
-            m.dataset.origIdx = data.origIdx;
+            // 手術刀：寫入排序權重
+            m.dataset.size = data.size; m.dataset.freq = data.freq; m.dataset.origIdx = data.origIdx;
         });
         refreshCollision();
     }
 
+    // --- 手術刀：僅替換 sort 排序邏輯 ---
     function refreshCollision() {
         const markers = Array.from(document.querySelectorAll('.marker')).filter(m => m.style.display !== 'none');
-        
         markers.sort((a, b) => {
             const aH = a.classList.contains('highlight'), bH = b.classList.contains('highlight');
             if (aH !== bH) return aH ? -1 : 1;
@@ -235,30 +221,18 @@
             if (aF !== bF) return bF - aF;
             return (parseInt(a.dataset.origIdx) || 0) - (parseInt(b.dataset.origIdx) || 0);
         });
-
         const occupied = [];
         markers.forEach(m => {
-            const label = m.querySelector('.label');
-            const rect = label.getBoundingClientRect();
+            const label = m.querySelector('.label'); const rect = label.getBoundingClientRect();
             const isOverlap = occupied.some(o => !(rect.right<o.left || rect.left>o.right || rect.bottom<o.top || rect.top>o.bottom));
-            
-            if (isOverlap && !m.classList.contains('highlight')) {
-                label.style.opacity = "0";
-                m.style.pointerEvents = "none";
-            } else { 
-                label.style.opacity = "1"; 
-                m.style.pointerEvents = "auto";
-                occupied.push(rect); 
-            }
+            if (isOverlap && !m.classList.contains('highlight')) { label.style.opacity = "0"; m.style.pointerEvents = "none"; }
+            else { label.style.opacity = "1"; m.style.pointerEvents = "auto"; occupied.push(rect); }
         });
     }
 
     function applyMarkerStyles() {
         const scale = pz.getScale();
-        document.querySelectorAll('.label').forEach(l => {
-            l.style.transform = `scale(${Math.max(0.5, 1/scale)})`;
-            l.style.transformOrigin = "center top";
-        });
+        document.querySelectorAll('.label').forEach(l => { l.style.transform = `scale(${Math.max(0.5, 1/scale)})`; l.style.transformOrigin = "center top"; });
     }
 
     function zoomToPoints(pts) {
@@ -292,7 +266,6 @@
         pz = Panzoom(el, { maxScale: 8, contain: 'outside' });
         el.addEventListener('panzoomchange', () => { applyMarkerStyles(); refreshCollision(); });
         document.getElementById('map-section').addEventListener('wheel', pz.zoomWithWheel);
-        
         const res = await fetch(`folder.csv?t=${Date.now()}`);
         const folders = parseCSV(await res.text()).slice(1);
         const select = document.getElementById('folder-select');
