@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V11.0.2</title>
+    <title>亞伯拉罕史地互動地圖 V11.0.0</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -15,195 +15,265 @@
         }
         
         #app-container { display: flex; width: 100%; height: 100%; flex-direction: row; }
-        @media (max-width: 800px) { #app-container { flex-direction: column; } }
-
-        #map-section { flex: 1; position: relative; background: #e3d5b8; overflow: hidden; cursor: grab; }
-        #panzoom-element { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; transform-origin: 0 0; }
-        #bg-map { max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 0 50px rgba(0,0,0,0.2); }
-        #overlay-container { position: absolute; top: 0; left: 0; pointer-events: none; }
-
-        .marker { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; z-index: 10; pointer-events: auto; cursor: pointer; transition: opacity 0.2s; }
-        .dot { width: 8px; height: 8px; background: #d32f2f; border-radius: 50%; border: 1.5px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.5); }
-        .label { 
-            margin-top: 4px; padding: 2px 6px; background: rgba(255,255,255,0.9); border-radius: 4px;
-            font-size: 14px; color: #333; white-space: nowrap; font-weight: bold;
-            box-shadow: 1px 1px 3px rgba(0,0,0,0.2); border: 1px solid #ccc;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        @media (max-width: 800px) and (orientation: portrait) {
+            #app-container { flex-direction: column; }
+            #side-panel { width: 100% !important; flex: 0 0 50dvh; }
         }
-        .marker.highlight .dot { background: #ffeb3b; width: 12px; height: 12px; border: 2px solid #d32f2f; z-index: 100; }
-        .marker.highlight .label { background: #d32f2f; color: white; border-color: #d32f2f; font-size: 16px; transform: scale(1.1); z-index: 100; }
-        .marker.region-type .label { color: #5d4037; border-style: dashed; }
 
-        #list-section { width: 380px; background: white; border-left: 2px solid var(--gold); display: flex; flex-direction: column; z-index: 20; box-shadow: -2px 0 10px rgba(0,0,0,0.1); }
-        @media (max-width: 800px) { #list-section { width: 100%; height: 40%; border-left: none; border-top: 2px solid var(--gold); } }
+        #map-section { flex: 1; position: relative; overflow: hidden; background: #e5d3b3; }
+        #panzoom-element { display: inline-block; position: relative; }
+        #bg-map { display: block; max-width: none; user-select: none; }
+        
+        /* 標籤樣式 */
+        .marker { position: absolute; transform-origin: center; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; z-index: 10; cursor: pointer; }
+        .marker .dot { width: 5px; height: 5px; background: rgba(93,64,55,0.5); border-radius: 50%; margin-bottom: 2px; }
+        .marker .label { 
+            opacity: 0; padding: 2px 6px; border-radius: 8px; background: rgba(255,255,255,0.9); 
+            border: 1.5px solid var(--brown); white-space: nowrap; font-weight: bold; font-size: 13px; 
+            color: var(--brown); transition: opacity 0.4s ease-in-out, transform 0.2s ease; pointer-events: none;
+        }
+        .marker.region-type .label { background: none !important; border: none !important; font-family: 'ZCOOL KuaiLe', cursive; color: var(--ink-blue); text-shadow: 0 0 5px #fdf6e3, 0 0 2px #fdf6e3; }
 
-        .toolbar { padding: 15px; background: var(--dark); color: white; display: flex; gap: 10px; align-items: center; }
-        select, input { padding: 8px; border-radius: 4px; border: none; font-size: 14px; }
-        #search-input { flex: 1; display: none; }
-        #search-input.open { display: block; }
+        .marker.highlight { z-index: 1000 !important; }
+        .marker.highlight .label { opacity: 1 !important; animation: labelBreathe 0.8s infinite alternate ease-in-out; background: #fffde7 !important; border: 2px solid #d32f2f !important; color: #d32f2f !important; pointer-events: auto !important; }
+        @keyframes labelBreathe { from { transform: translateY(0) scale(1); } to { transform: translateY(-6px) scale(1.05); } }
 
-        #table-container { flex: 1; overflow-y: auto; position: relative; }
-        table { width: 100%; border-collapse: collapse; font-size: 14px; }
-        th { position: sticky; top: 0; background: #f2f2f2; z-index: 5; padding: 10px; border-bottom: 2px solid var(--gold); text-align: left; color: var(--brown); }
-        td { padding: 12px 10px; border-bottom: 1px solid #eee; cursor: pointer; vertical-align: top; }
-        tr:hover { background: #fff9eb; }
-        tr.active { background: #fff0c1 !important; border-left: 5px solid var(--gold); }
-        .row-id { color: #999; font-size: 12px; width: 30px; }
-        .row-event { font-weight: bold; color: #2c3e50; margin-bottom: 4px; }
-        .row-loc { color: #d32f2f; font-size: 13px; font-weight: bold; }
-        .row-script { color: #666; font-style: italic; font-size: 12px; }
+        /* 搜尋介面修正：叉叉置於左側 */
+        .search-container { position: absolute; right: 12px; top: 12px; z-index: 2000; display: flex; flex-direction: column; align-items: flex-end; }
+        .search-bar-wrapper { display: flex; align-items: center; background: rgba(255,255,255,0.4); backdrop-filter: blur(8px); border-radius: 10px; border: 2px solid var(--brown); padding: 2px; }
+        .search-clear { cursor: pointer; display: none; padding: 0 8px; color: var(--brown); font-weight: bold; font-size: 18px; order: -1; } /* order -1 確保在最左 */
+        #search-input { width: 0; opacity: 0; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); border: none; background: transparent; height: 32px; outline: none; font-size: 14px; }
+        #search-input.open { width: 160px; opacity: 1; padding: 0 8px; }
+        .search-btn { width: 34px; height: 34px; cursor: pointer; display: flex; align-items: center; justify-content: center; background: transparent; border: none; }
 
-        .fab { position: absolute; bottom: 25px; right: 25px; width: 56px; height: 56px; background: var(--gold); border-radius: 50%; color: white; display: flex; align-items: center; justify-content: center; font-size: 24px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 30; }
-        #fab-menu { position: absolute; bottom: 90px; right: 25px; display: none; flex-direction: column; gap: 10px; z-index: 30; }
-        .fab-item { width: 45px; height: 45px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); cursor: pointer; color: var(--dark); border: 1px solid var(--gold); }
+        #search-history { 
+            display: none; width: 200px; background: white; border: 1px solid #ccc; border-radius: 8px; 
+            margin-top: 5px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); overflow-y: auto; max-height: 30dvh; 
+        }
+        .history-item { padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; cursor: pointer; font-size: 13px; }
+        .history-item:hover { background: #f9f9f9; }
+
+        #resizer-main { background: var(--handle-bg); z-index: 1100; display: flex; align-items: center; justify-content: center; touch-action: none; }
+        @media (min-width: 801px), (orientation: landscape) { #resizer-main { width: 12px; cursor: col-resize; height: 100%; } #resizer-main::after { content: "⋮"; } }
+        @media (max-width: 800px) and (orientation: portrait) { #resizer-main { height: 16px; cursor: row-resize; width: 100%; } #resizer-main::after { content: "⋯"; } }
+        
+        #side-panel { background: white; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+        #info-area { display: none; flex-direction: column; background: #fff; flex: 0 0 45%; min-height: 44px; }
+        #info-header { background: var(--dark); color: white; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; height: 44px; }
+        #resizer-inner { height: 12px; background: #eee; cursor: row-resize; display: flex; align-items: center; justify-content: center; touch-action: none; flex-shrink: 0; border-top: 1px solid #ddd; }
+        #list-container { flex: 1; overflow-y: auto; }
+        tr.active-row td { background: #fffde7; font-weight: bold; border-left: 5px solid var(--gold); }
+
+        .fab-container { position: absolute; left: 12px; top: 12px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; }
+        .fab-main { width: 42px; height: 42px; background: rgba(255,255,255,0.4); backdrop-filter: blur(8px); border: 2px solid var(--brown); border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
     </style>
 </head>
 <body>
 
 <div id="app-container">
     <div id="map-section">
-        <div id="panzoom-element">
-            <img src="bg.jpg" id="bg-map" onload="syncOverlay()">
-            <div id="overlay-container"></div>
+        <div class="search-container">
+            <div class="search-bar-wrapper">
+                <div id="search-clear" class="search-clear" onclick="clearSearch()">×</div>
+                <input type="text" id="search-input" placeholder="搜尋..." oninput="handleSearch()" onfocus="showHistory()">
+                <button class="search-btn" onclick="toggleSearch()"><svg viewBox="0 0 24 24" width="20" fill="#5d4037"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg></button>
+            </div>
+            <div id="search-history"></div>
         </div>
-        <div id="fab-menu">
-            <div class="fab-item" title="重置視角" onclick="resetView()">🏠</div>
-            <div class="fab-item" title="搜尋" onclick="toggleSearch()">🔍</div>
+        
+        <div class="fab-container">
+            <button class="fab-main" onclick="toggleFab()"><svg viewBox="0 0 24 24" width="22" fill="#5d4037"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg></button>
+            <div id="fab-menu" class="fab-menu" style="display:none; flex-direction:column; gap:6px;">
+                <button class="fab-item" onclick="pz.zoomIn()" style="width:34px; height:34px; border-radius:10px;">+</button>
+                <button class="fab-item" onclick="pz.zoomOut()" style="width:34px; height:34px; border-radius:10px;">-</button>
+                <button class="fab-item" onclick="resetView()" style="width:34px; height:34px; border-radius:10px;">↺</button>
+            </div>
         </div>
-        <div class="fab" onclick="toggleFab()">☰</div>
-    </div>
 
-    <div id="list-section">
-        <div class="toolbar">
-            <select id="folder-select" onchange="loadProject(this.value)"></select>
-            <input type="text" id="search-input" placeholder="搜尋事件、地點..." oninput="handleSearch(this.value)">
+        <div id="panzoom-element">
+            <img src="" id="bg-map">
+            <div id="overlay-container" style="position:absolute; top:0; left:0; pointer-events:none;">
+                <svg id="svg-layer" style="position:absolute; width:100%; height:100%;"></svg>
+                <div id="marker-layer"></div>
+            </div>
         </div>
-        <div id="table-container">
-            <table>
-                <thead><tr><th>史地事件錄</th></tr></thead>
-                <tbody id="event-body"></tbody>
-            </table>
+    </div>
+    
+    <div id="resizer-main"></div>
+    
+    <div id="side-panel">
+        <div id="folder-nav"><select id="folder-select" onchange="loadProject(this.value)" style="width:100%; padding:8px;"><option value="">載入中...</option></select></div>
+        <div id="info-area">
+            <div id="info-header" onclick="toggleInfo()"><div>📜 詳情 <span id="info-arrow">▼</span></div><div style="display:flex; gap:10px;"><button onclick="navEvent(-1); event.stopPropagation();">◀</button><button onclick="navEvent(1); event.stopPropagation();">▶</button></div></div>
+            <div id="info-body" style="padding:15px; overflow-y:auto; flex:1;">
+                <div id="info-time" style="color:#888;"></div>
+                <h3 id="info-title" style="color:var(--gold); margin:5px 0;"></h3>
+                <div id="info-path" style="background:#f9f9f9; padding:8px; border-radius:4px; margin:5px 0; font-weight:bold;"></div>
+                <p id="info-script" style="color:#2980b9;"></p>
+                <div id="info-note"></div>
+            </div>
         </div>
+        <div id="resizer-inner"></div>
+        <div id="list-container"><table><tbody id="table-body"></tbody></table></div>
     </div>
 </div>
 
 <script>
-    let pz, eventData = [], filteredData = [], allCoords = [], currentFolder = "";
-    const logic = { currentIdx: -1, points: [] };
+    let pz, eventData = [], filteredData = [], allCoords = [], locFreq = {}, currentFolder = '', currentMapIdx = -1, currentEventIdx = -1, baseMarkerFontSize = 13;
+    let searchHistory = JSON.parse(localStorage.getItem('bibleSearchHistory') || '[]');
 
-    // --- [手術刀協議] 僅置換 CSV 解析逻辑，解決引號內逗號位移問題 ---
-    function parseCSV(text) {
-        return text.split(/\r?\n/).filter(l => l.trim()).map(line => {
-            const result = [];
-            let cur = '', inQuotes = false;
-            for (let i = 0; i < line.length; i++) {
-                const char = line[i];
-                if (char === '"') inQuotes = !inQuotes;
-                else if (char === ',' && !inQuotes) { result.push(cur.trim()); cur = ''; }
-                else cur += char;
-            }
-            result.push(cur.trim());
-            return result;
-        });
+    function toggleSearch() {
+        const input = document.getElementById('search-input');
+        const isOpening = !input.classList.contains('open');
+        input.classList.toggle('open');
+        if (isOpening) { input.focus(); } else { hideHistory(); }
     }
 
-    // --- [手術刀協議] 僅置換數據載入邏輯，加入全文頻次統計與 Size 修正 ---
-    async function loadProject(folder) {
-        if (!folder) return;
-        currentFolder = folder; localStorage.setItem('lastBibleFolder', folder);
-        allCoords = [];
-        const dRes = await fetch(`${folder}/data.csv?t=${Date.now()}`);
-        const dataRawText = await dRes.text(); // 用於統計地名出現次數
+    // --- 高效率計次搜尋與排序 ---
+    function handleSearch(keyword) {
+        const input = document.getElementById('search-input');
+        const term = (keyword !== undefined ? keyword : input.value).trim().toLowerCase();
+        const clearBtn = document.getElementById('search-clear');
         
-        eventData = parseCSV(dataRawText).slice(1).filter(r => r.length > 2).map(r => {
-            const obj = { id:r[0], time:r[1], event:r[2], loc:r[3], script:r[4], note:r[5] };
-            obj._searchStr = Object.values(obj).join(' ').toLowerCase();
-            return obj;
-        });
-        filteredData = [...eventData];
-        renderTable(filteredData);
+        clearBtn.style.display = term ? 'block' : 'none';
 
-        let coordIdx = 0; 
-        for (let x = 1; x <= 15; x++) {
-            try {
-                const cRes = await fetch(`${folder}/coords-${x}.csv?t=${Date.now()}`);
-                if (!cRes.ok) break;
-                const rows = parseCSV(await cRes.text());
-                if (rows.length < 2) continue;
-                
-                const h = rows[0];
-                const nIdx = h.indexOf("地名") > -1 ? h.indexOf("地名") : 1;
-                const sIdx = h.indexOf("Size") > -1 ? h.indexOf("Size") : 7;
-                
-                rows.slice(1).forEach(r => { 
-                    const name = (r[nIdx] || "").replace(/^"|"$/g, '').trim();
-                    if(name && r[5]) {
-                        // 精確統計全文次數邏輯
-                        const freq = dataRawText.split(name).length - 1;
-                        allCoords.push({ 
-                            n: name, x: r[5], y: r[6], mapIdx: x, 
-                            size: parseInt(r[sIdx]) || 0, freq: freq, origIdx: coordIdx++ 
-                        }); 
-                    }
-                });
-            } catch(e) { break; }
+        if (!term) {
+            filteredData = [...eventData];
+        } else {
+            const safeTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(safeTerm, 'gi');
+
+            filteredData = eventData
+                .map(item => {
+                    const match = item._searchStr.match(regex);
+                    return { ...item, score: match ? match.length : 0 };
+                })
+                .filter(item => item.score > 0)
+                .sort((a, b) => b.score - a.score);
         }
-        if(filteredData.length > 0) selectEvent(0);
+        
+        renderTable(filteredData);
+        if (term && keyword === undefined) saveHistory(term);
+        
+        // 搜尋完畢主動點選第一項
+        if (term && filteredData.length > 0) {
+            selectEvent(0);
+            document.getElementById('list-container').scrollTop = 0;
+        }
     }
 
-    function renderTable(data) {
-        const body = document.getElementById('event-body');
-        body.innerHTML = data.map((r, i) => `
-            <tr onclick="selectEvent(${i})" id="row-${i}">
-                <td>
-                    <div class="row-id">#${r.id}</div>
-                    <div class="row-event">${r.event}</div>
-                    <div class="row-loc">📍 ${r.loc}</div>
-                    <div class="row-script">${r.script}</div>
-                </td>
-            </tr>
+    function clearSearch() {
+        const lastId = currentEventIdx !== -1 ? filteredData[currentEventIdx].id : null;
+        const input = document.getElementById('search-input');
+        input.value = '';
+        input.classList.remove('open');
+        document.getElementById('search-clear').style.display = 'none';
+        hideHistory();
+        
+        handleSearch(""); // 重置列表
+        
+        // 保留最後選取的事件
+        if (lastId) {
+            const newIdx = filteredData.findIndex(d => d.id === lastId);
+            if (newIdx !== -1) {
+                selectEvent(newIdx);
+                const r = document.getElementById('table-body').rows[newIdx];
+                if(r) r.scrollIntoView({block:'center'});
+            }
+        }
+    }
+
+    function saveHistory(term) {
+        if (!term.trim()) return;
+        searchHistory = [term, ...searchHistory.filter(h => h !== term)].slice(0, 10);
+        localStorage.setItem('bibleSearchHistory', JSON.stringify(searchHistory));
+        renderHistory();
+    }
+
+    function renderHistory() {
+        const panel = document.getElementById('search-history');
+        panel.innerHTML = searchHistory.map(h => `
+            <div class="history-item" onclick="useHistory('${h}')">
+                <span>${h}</span>
+                <span style="color:#ccc" onclick="deleteHistory(event, '${h}')">×</span>
+            </div>
         `).join('');
     }
 
-    function selectEvent(idx) {
-        logic.currentIdx = idx;
-        const rows = document.querySelectorAll('#event-body tr');
-        rows.forEach(r => r.classList.remove('active'));
-        const activeRow = document.getElementById(`row-${idx}`);
-        if(activeRow) {
-            activeRow.classList.add('active');
-            activeRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-        
-        const locStr = filteredData[idx].loc;
-        logic.points = allCoords.filter(c => locStr.includes(c.n));
-        renderVisuals();
-        if(logic.points.length > 0) zoomToPoints(logic.points);
+    function useHistory(h) {
+        document.getElementById('search-input').value = h;
+        handleSearch(h);
+        hideHistory();
     }
 
-    // --- [手術刀協議] 保持 V11.0.0 的渲染邏輯，僅增加權重 Data 綁定 ---
-    function renderVisuals() {
-        const ml = document.getElementById('overlay-container');
-        const bgMap = document.getElementById('bg-map');
-        
-        // 切換地圖圖片
-        if (logic.points.length > 0) {
-            const targetMapIdx = logic.points[0].mapIdx;
-            const newSrc = `${currentFolder}/bg${targetMapIdx}.jpg`;
-            if (!bgMap.src.includes(`bg${targetMapIdx}.jpg`)) bgMap.src = newSrc;
-        }
+    function deleteHistory(e, h) {
+        e.stopPropagation();
+        searchHistory = searchHistory.filter(item => item !== h);
+        localStorage.setItem('bibleSearchHistory', JSON.stringify(searchHistory));
+        renderHistory();
+    }
 
-        const db = allCoords;
+    function showHistory() { if(searchHistory.length) document.getElementById('search-history').style.display = 'block'; renderHistory(); }
+    function hideHistory() { document.getElementById('search-history').style.display = 'none'; }
+
+    function selectEvent(idxInFiltered) {
+        if (idxInFiltered < 0 || idxInFiltered >= filteredData.length) return;
+        currentEventIdx = idxInFiltered;
+        const item = filteredData[idxInFiltered];
+        
+        Array.from(document.getElementById('table-body').rows).forEach((r, i) => 
+            r.className = i === idxInFiltered ? 'active-row' : ''
+        );
+        updateMapAndInfo(item);
+    }
+
+    function navEvent(step) {
+        const nextIdx = currentEventIdx + step;
+        if (nextIdx >= 0 && nextIdx < filteredData.length) {
+            selectEvent(nextIdx);
+            const r = document.getElementById('table-body').rows[nextIdx];
+            if(r) r.scrollIntoView({behavior:'smooth', block:'center'});
+        }
+    }
+
+    async function updateMapAndInfo(item) {
+        let targetMapIdx = 1;
+        const testNames = item.loc.split(/[+→]/).map(p => p.replace(/\(.*?\)/g, '').trim());
+        for (let x = 15; x >= 1; x--) {
+            const db = allCoords.filter(c => c.mapIdx === x);
+            if (db.length && testNames.every(n => findBestMatch(n, db))) { targetMapIdx = x; break; }
+        }
+        if (currentMapIdx !== targetMapIdx) {
+            currentMapIdx = targetMapIdx;
+            const img = document.getElementById('bg-map');
+            img.src = `${currentFolder}/picture-${targetMapIdx}.png`;
+            await new Promise(res => img.onload = () => { syncOverlay(); updateMinScale(); res(); });
+        }
+        const mapData = allCoords.filter(c => c.mapIdx === targetMapIdx);
+        renderVisuals(mapData, parseLocationLogic(item.loc, mapData));
+        updateInfoPanel(item);
+    }
+
+    function renderVisuals(db, logic) {
+        const ml = document.getElementById('marker-layer'), sl = document.getElementById('svg-layer');
+        sl.innerHTML = '';
+        logic.paths.forEach(path => {
+            for (let i = 0; i < path.length - 1; i++) {
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', path[i].x+'%'); line.setAttribute('y1', path[i].y+'%');
+                line.setAttribute('x2', path[i+1].x+'%'); line.setAttribute('y2', path[i+1].y+'%');
+                line.setAttribute('stroke', '#d32f2f'); line.setAttribute('stroke-width', '2.5');
+                sl.appendChild(line);
+            }
+        });
+
+        const existingMarkers = Array.from(ml.querySelectorAll('.marker'));
+        const newPointNames = db.map(d => d.n);
+        existingMarkers.forEach(m => { if (!newPointNames.includes(m.dataset.name)) m.remove(); });
+
         db.forEach(data => {
             const isH = logic.points.some(p => p.n === data.n);
             let m = ml.querySelector(`.marker[data-name="${data.n}"]`);
-            
-            const currentMapIdx = parseInt(bgMap.src.match(/bg(\d+)\.jpg/)?.[1] || 1);
-            if (data.mapIdx !== currentMapIdx) {
-                if (m) m.style.display = 'none';
-                return;
-            }
-
             if (!m) {
                 m = document.createElement('div');
                 m.className = 'marker';
@@ -218,32 +288,18 @@
                 };
                 ml.appendChild(m);
             }
-            m.style.display = 'flex';
             m.className = `marker ${isH ? 'highlight' : ''} ${data.size > 2 ? 'region-type' : ''}`;
             m.style.left = data.x + '%'; m.style.top = data.y + '%';
-            
-            // 寫入排序權重數據
             m.dataset.size = data.size;
-            m.dataset.freq = data.freq;
-            m.dataset.origIdx = data.origIdx;
         });
-        refreshCollision();
+        applyMarkerStyles();
+        if (logic.points.length) flyTo(logic.points);
+        setTimeout(refreshCollision, 60); 
     }
 
-    // --- [手術刀協議] 核心：置換碰撞優先級排序逻辑 (四層排序) ---
     function refreshCollision() {
-        const markers = Array.from(document.querySelectorAll('.marker')).filter(m => m.style.display !== 'none');
-        
-        markers.sort((a, b) => {
-            const aH = a.classList.contains('highlight'), bH = b.classList.contains('highlight');
-            if (aH !== bH) return aH ? -1 : 1;
-            const aS = parseInt(a.dataset.size) || 0, bS = parseInt(b.dataset.size) || 0;
-            if (aS !== bS) return aS - bS;
-            const aF = parseInt(a.dataset.freq) || 0, bF = parseInt(b.dataset.freq) || 0;
-            if (aF !== bF) return bF - aF;
-            return (parseInt(a.dataset.origIdx) || 0) - (parseInt(b.dataset.origIdx) || 0);
-        });
-
+        const markers = Array.from(document.querySelectorAll('.marker'));
+        markers.sort((a, b) => (a.classList.contains('highlight') ? -1 : 1));
         const occupied = [];
         markers.forEach(m => {
             const label = m.querySelector('.label');
@@ -261,22 +317,182 @@
         });
     }
 
-    function applyMarkerStyles() {
-        const scale = pz.getScale();
-        document.querySelectorAll('.label').forEach(l => {
-            l.style.transform = `scale(${Math.max(0.5, 1/scale)})`;
-            l.style.transformOrigin = "center top";
+    function initResizers() {
+        const rMain = document.getElementById('resizer-main'), side = document.getElementById('side-panel');
+        const rInner = document.getElementById('resizer-inner'), info = document.getElementById('info-area');
+        let startX, startY, startW, startH;
+
+        rMain.onmousedown = rMain.ontouchstart = (e) => {
+            e.preventDefault();
+            const pointerX = e.clientX || (e.touches ? e.touches[0].clientX : 0);
+            const pointerY = e.clientY || (e.touches ? e.touches[0].clientY : 0);
+            startX = pointerX; startY = pointerY; startW = side.offsetWidth; startH = side.offsetHeight;
+            window.onmousemove = window.ontouchmove = (ev) => {
+                const x = ev.clientX || (ev.touches ? ev.touches[0].clientX : 0);
+                const y = ev.clientY || (ev.touches ? ev.touches[0].clientY : 0);
+                if (window.innerWidth < window.innerHeight && window.matchMedia("(orientation: portrait)").matches) {
+                    side.style.flex = `0 0 ${Math.max(100, Math.min(startH + (startY - y), window.innerHeight * 0.8))}px`;
+                } else {
+                    side.style.flex = "none"; 
+                    side.style.width = `${Math.max(200, Math.min(startW + (startX - x), window.innerWidth * 0.7))}px`;
+                }
+                syncOverlay(); updateMinScale(); refreshCollision();
+            };
+            window.onmouseup = window.ontouchend = () => { window.onmousemove = window.ontouchmove = null; };
+        };
+
+        rInner.onmousedown = rInner.ontouchstart = (e) => {
+            e.preventDefault();
+            startY = e.clientY || (e.touches ? e.touches[0].clientY : 0);
+            startH = info.offsetHeight;
+            window.onmousemove = window.ontouchmove = (ev) => {
+                const y = ev.clientY || (ev.touches ? ev.touches[0].clientY : 0);
+                info.style.flex = `0 0 ${Math.max(44, Math.min(startH + (y - startY), side.offsetHeight * 0.9))}px`;
+            };
+            window.onmouseup = window.ontouchend = () => { window.onmousemove = window.ontouchmove = null; };
+        };
+    }
+
+    function renderTable(data) {
+        const tbody = document.getElementById('table-body');
+        tbody.innerHTML = '';
+        data.forEach((item, i) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td width="40" style="padding:12px; border-bottom:1px solid #eee;">${item.id}</td><td style="padding:12px; border-bottom:1px solid #eee;">${item.event}</td>`;
+            tr.onclick = () => selectEvent(i);
+            tbody.appendChild(tr);
         });
     }
 
-    function zoomToPoints(pts) {
-        const xs = pts.map(p => parseFloat(p.x)), ys = pts.map(p => parseFloat(p.y));
-        const midX = (Math.min(...xs) + Math.max(...xs)) / 2, midY = (Math.min(...ys) + Math.max(...ys)) / 2;
-        const img = document.getElementById('bg-map');
-        const px = (midX / 100) * img.offsetWidth, py = (midY / 100) * img.offsetHeight;
-        pz.pan(img.offsetWidth/2 - px, img.offsetHeight/2 - py, { animate: true });
-        const span = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
-        pz.zoom(span < 5 ? 4 : (span < 15 ? 2.5 : 1.5), { animate: true });
+    function updateInfoPanel(item) {
+        document.getElementById('info-area').style.display = 'flex';
+        document.getElementById('info-title').innerText = item.event;
+        document.getElementById('info-time').innerText = item.time;
+        document.getElementById('info-path').innerText = `地點：${item.loc}`;
+        document.getElementById('info-script').innerText = item.script;
+        document.getElementById('info-note').innerText = item.note;
+    }
+
+    function toggleInfo() {
+        const body = document.getElementById('info-body'), arrow = document.getElementById('info-arrow'), area = document.getElementById('info-area');
+        if (body.style.display === 'none') { body.style.display = 'block'; area.style.flex = "0 0 45%"; arrow.innerText = '▼'; }
+        else { body.style.display = 'none'; area.style.flex = "0 0 44px"; arrow.innerText = '▲'; }
+    }
+
+    function parseCSV(t) {
+        const rows = []; let row = [], cell = '', q = false;
+        for (let i = 0; i < t.length; i++) {
+            let c = t[i], n = t[i+1];
+            if (c === '"' && q && n === '"') { cell += '"'; i++; }
+            else if (c === '"') q = !q;
+            else if (c === ',' && !q) { row.push(cell.trim()); cell = ''; }
+            else if ((c === '\n' || c === '\r') && !q) {
+                if (row.length > 0 || cell) { row.push(cell.trim()); rows.push(row); }
+                row = []; cell = ''; if (c === '\r' && n === '\n') i++;
+            } else cell += c;
+        }
+        if (row.length > 0 || cell) { row.push(cell.trim()); rows.push(row); }
+        return rows;
+    }
+
+    async function loadProject(folder) {
+        if (!folder) return;
+        currentFolder = folder; localStorage.setItem('lastBibleFolder', folder);
+        allCoords = [];
+        const dRes = await fetch(`${folder}/data.csv?t=${Date.now()}`);
+        eventData = parseCSV(await dRes.text()).slice(1).filter(r => r.length > 2).map(r => {
+            const obj = { id:r[0], time:r[1], event:r[2], loc:r[3], script:r[4], note:r[5] };
+            obj._searchStr = Object.values(obj).join(' ').toLowerCase();
+            return obj;
+        });
+        filteredData = [...eventData];
+        renderTable(filteredData);
+        for (let x = 1; x <= 15; x++) {
+            try {
+                const cRes = await fetch(`${folder}/coords-${x}.csv?t=${Date.now()}`);
+                if (!cRes.ok) break;
+                parseCSV(await cRes.text()).slice(1).forEach(r => { if(r[1] && r[5]) allCoords.push({ n: r[1].trim(), x: r[5], y: r[6], mapIdx: x, size: parseInt(r[7])||0 }); });
+            } catch(e) { break; }
+        }
+        if(filteredData.length > 0) selectEvent(0);
+    }
+
+    function findBestMatch(t, db) {
+        let b = null, m = Infinity;
+        for (const i of db) {
+            if (i.n === t) return i;
+            if (i.n.includes(t) || t.includes(i.n)) { let d = Math.abs(i.n.length - t.length); if (d < m) { m = d; b = i; } }
+        }
+        return b;
+    }
+
+    function parseLocationLogic(locStr, db) {
+        const result = { paths: [], points: [] };
+        locStr.split('+').map(b => b.trim()).forEach(block => {
+            if (block.includes('→')) {
+                const chain = block.split('→').map(p => findBestMatch(p.replace(/\(.*?\)/g, '').trim(), db)).filter(p => p);
+                if (chain.length > 1) result.paths.push(chain);
+                chain.forEach(p => result.points.push(p));
+            } else {
+                const pt = findBestMatch(block.replace(/\(.*?\)/g, '').trim(), db);
+                if (pt) result.points.push(pt);
+            }
+        });
+        return result;
+    }
+
+    function applyMarkerStyles() {
+        const s = pz ? pz.getScale() : 1;
+        const anti = s > 1 ? 1 / s : 1;
+        document.querySelectorAll('.marker').forEach(m => {
+            const gain = parseInt(m.dataset.size) || 0;
+            m.querySelector('.label').style.fontSize = (baseMarkerFontSize + (gain * 1.5)) + 'px';
+            m.style.transform = `translate(-50%, -50%) scale(${anti})`;
+        });
+    }
+
+    // --- [手術刀置換點] V11.0.0 物理歸一化 FlyTo ---
+    function flyTo(pts) {
+        if (!pts.length) return;
+        const img = document.getElementById('bg-map'), container = document.getElementById('map-section');
+        if (!img.offsetWidth) return;
+
+        const containerRect = container.getBoundingClientRect();
+        const imgRect = img.getBoundingClientRect();
+        const sc = pz.getScale();
+        const currentPan = pz.getPan();
+
+        // 1. 計算目標點群的百分比中心
+        let avgPctX = 0, avgPctY = 0;
+        pts.forEach(p => { avgPctX += parseFloat(p.x); avgPctY += parseFloat(p.y); });
+        avgPctX /= pts.length;
+        avgPctY /= pts.length;
+
+        // 2. 換算成目前螢幕上的真實物理位置 (相對於容器左上角)
+        const currentMarkerX = (imgRect.left - containerRect.left) + (imgRect.width * (avgPctX / 100));
+        const currentMarkerY = (imgRect.top - containerRect.top) + (imgRect.height * (avgPctY / 100));
+
+        // 3. 計算物理差距
+        const diffX = (containerRect.width / 2) - currentMarkerX;
+        const diffY = (containerRect.height / 2) - currentMarkerY;
+
+        // 4. [核心歸一化]：物理位移 / 縮放倍率 = Panzoom 應補償量
+        const correctedDiffX = diffX / sc;
+        const correctedDiffY = diffY / sc;
+
+        pz.pan(currentPan.x + correctedDiffX, currentPan.y + correctedDiffY, { 
+            animate: true, 
+            duration: 500,
+            easing: 'ease-out'
+        });
+    }
+
+    function updateMinScale() {
+        const img = document.getElementById('bg-map'), c = document.getElementById('map-section');
+        if (!img.offsetWidth) return;
+        const min = Math.max(c.clientWidth / img.offsetWidth, c.clientHeight / img.offsetHeight);
+        pz.setOptions({ minScale: min });
+        if (pz.getScale() < min) pz.zoom(min, { animate: true });
     }
 
     function syncOverlay() {
@@ -286,17 +502,10 @@
 
     function toggleFab() { const m = document.getElementById('fab-menu'); m.style.display = m.style.display === 'none' ? 'flex' : 'none'; }
     function resetView() { pz.reset(); applyMarkerStyles(); refreshCollision(); }
-    function toggleSearch() { const i = document.getElementById('search-input'); i.classList.toggle('open'); if(i.classList.contains('open')) i.focus(); }
-    
-    function handleSearch(val) {
-        const q = val.toLowerCase();
-        filteredData = eventData.filter(r => r._searchStr.includes(q));
-        renderTable(filteredData);
-        if(filteredData.length > 0) selectEvent(0);
-    }
 
     window.onload = async () => {
         const el = document.getElementById('panzoom-element');
+        // 初始化加入 contain: 'outside'
         pz = Panzoom(el, { maxScale: 8, contain: 'outside' });
         el.addEventListener('panzoomchange', () => { applyMarkerStyles(); refreshCollision(); });
         document.getElementById('map-section').addEventListener('wheel', pz.zoomWithWheel);
@@ -308,6 +517,7 @@
         folders.forEach(f => { if(f[0]) { const opt = document.createElement('option'); opt.value = f[0]; opt.innerText = f[1] || f[0]; select.appendChild(opt); } });
         const last = localStorage.getItem('lastBibleFolder');
         if (last) { select.value = last; loadProject(last); }
+        initResizers();
     };
 </script>
 </body>
