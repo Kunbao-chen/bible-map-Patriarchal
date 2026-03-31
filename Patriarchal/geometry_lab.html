@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>最終完美版 V11.1.2</title>
+    <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
+    <style>
+        body { margin: 0; display: flex; height: 100vh; background: #1a1a1a; font-family: monospace; overflow: hidden; }
+        #map-container { flex: 0 0 65%; position: relative; overflow: hidden; background: #333; border-right: 2px solid #444; }
+        #panzoom-element { display: inline-block; }
+        #bg-map { display: block; max-width: none; pointer-events: none; }
+        .dot { 
+            position: absolute; width: 14px; height: 14px; background: #ff0000; 
+            border-radius: 50%; transform: translate(-50%, -50%); 
+            border: 2px solid white; pointer-events: none; z-index: 100;
+        }
+        #debug-panel { 
+            position: absolute; top: 10px; left: 10px; 
+            background: rgba(0,0,0,0.85); color: #0f0; padding: 15px; 
+            border-radius: 8px; font-size: 12px; pointer-events: none; z-index: 200;
+        }
+        #ui-panel { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px; gap: 20px; background: #222; }
+        button { width: 100%; max-width: 200px; padding: 15px; font-size: 16px; cursor: pointer; background: #c5a059; border: none; color: white; border-radius: 8px; }
+        button:disabled { background: #555; }
+    </style>
+</head>
+<body>
+
+<div id="map-container">
+    <div id="panzoom-element">
+        <img src="picture-1.png" id="bg-map">
+        <div id="marker-layer" style="position:absolute; top:0; left:0; width:100%; height:100%;"></div>
+    </div>
+    <div id="debug-panel">
+        <div>倍率 (Scale): <span id="val-scale">-</span></div>
+        <div>圖片物理位置: <span id="val-rect">-</span></div>
+        <div>標記圖片座標: <span id="val-img">-</span></div>
+    </div>
+</div>
+
+<div id="ui-panel">
+    <h2 style="color: #c5a059;">最終完美系統 V11.1.2</h2>
+    <button id="fly-btn" disabled>FlyTo 精準置中</button>
+</div>
+
+<script>
+    const el = document.getElementById('panzoom-element');
+    const img = document.getElementById('bg-map');
+    const container = document.getElementById('map-container');
+    const markerLayer = document.getElementById('marker-layer');
+    const flyBtn = document.getElementById('fly-btn');
+    
+    let targetImgCoord = null;
+
+    // [手術刀置換] 加入 contain: 'outside'
+    const pz = Panzoom(el, { 
+        maxScale: 10, 
+        minScale: 0.1,
+        contain: 'outside' 
+    });
+    
+    container.addEventListener('wheel', pz.zoomWithWheel);
+
+    // 1. 物理實測：點擊換算
+    container.addEventListener('click', (e) => {
+        if (e.target.tagName === 'BUTTON') return;
+        
+        const containerRect = container.getBoundingClientRect();
+        const imgRect = img.getBoundingClientRect();
+        const sc = pz.getScale();
+
+        targetImgCoord = {
+            x: (e.clientX - imgRect.left) / sc,
+            y: (e.clientY - imgRect.top) / sc
+        };
+
+        markerLayer.innerHTML = '';
+        const dot = document.createElement('div');
+        dot.className = 'dot';
+        dot.style.left = targetImgCoord.x + 'px';
+        dot.style.top = targetImgCoord.y + 'px';
+        markerLayer.appendChild(dot);
+
+        flyBtn.disabled = false;
+        updateDebugView();
+    });
+
+    // 2. 歸一化 FlyTo 邏輯
+    flyBtn.addEventListener('click', () => {
+        if (!targetImgCoord) return;
+
+        const containerRect = container.getBoundingClientRect();
+        const imgRect = img.getBoundingClientRect();
+        const sc = pz.getScale();
+        const currentPan = pz.getPan();
+
+        const currentMarkerX = (imgRect.left - containerRect.left) + (targetImgCoord.x * sc);
+        const currentMarkerY = (imgRect.top - containerRect.top) + (targetImgCoord.y * sc);
+
+        const diffX = (containerRect.width / 2) - currentMarkerX;
+        const diffY = (containerRect.height / 2) - currentMarkerY;
+
+        // 核心歸一化：抵消 Panzoom 內部的縮放增益
+        const correctedDiffX = diffX / sc;
+        const correctedDiffY = diffY / sc;
+
+        pz.pan(currentPan.x + correctedDiffX, currentPan.y + correctedDiffY, { 
+            animate: true, 
+            duration: 500,
+            easing: 'ease-out'
+        });
+    });
+
+    function updateDebugView() {
+        const sc = pz.getScale();
+        const imgRect = img.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+        document.getElementById('val-scale').innerText = sc.toFixed(3);
+        document.getElementById('val-rect').innerText = `X:${Math.round(imgRect.left - containerRect.left)}, Y:${Math.round(imgRect.top - containerRect.top)}`;
+        if (targetImgCoord) {
+            document.getElementById('val-img').innerText = `X:${Math.round(targetImgCoord.x)}, Y:${Math.round(targetImgCoord.y)}`;
+        }
+    }
+
+    el.addEventListener('panzoomchange', updateDebugView);
+    window.onload = () => updateDebugView();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>史地優先級排序驗證工具 V8.0</title>
+    <style>
+        body { font-family: "微軟正黑體", sans-serif; background: #fdf6e3; padding: 20px; }
+        .container { max-width: 1100px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: 1px solid #c5a059; }
+        h1 { color: #c5a059; border-bottom: 2px solid #c5a059; padding-bottom: 10px; }
+        .ui-box { background: #f9f9f9; padding: 15px; border-radius: 8px; display: flex; gap: 20px; align-items: flex-end; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background: #2c3e50; color: white; position: sticky; top: 0; }
+        .is-h { background: #fffde7 !important; font-weight: bold; border: 2px solid #c5a059; }
+        .badge { background: #e74c3c; color: white; padding: 2px 8px; border-radius: 10px; font-size: 12px; }
+        .btn { background: #c5a059; color: white; border: none; padding: 12px 24px; cursor: pointer; border-radius: 4px; font-weight: bold; }
+        .debug-size { color: #d32f2f; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>史地優先級排序驗證工具 V8.0</h1>
+    <p style="color: #666;">修正重點：正確解析包含逗號的引號欄位，確保 Size 不位移。</p>
+    
+    <div class="ui-box">
+        <div style="flex:1">
+            <label>1. 上傳 data.csv:</label><br>
+            <input type="file" id="fD" style="width:100%">
+        </div>
+        <div style="flex:1">
+            <label>2. 上傳 coords.csv:</label><br>
+            <input type="file" id="fC" style="width:100%">
+        </div>
+        <div style="flex:1">
+            <label>3. 模擬高亮地名:</label><br>
+            <input type="text" id="hN" placeholder="例如：埃及" style="width:100%; padding:8px;">
+        </div>
+        <button class="btn" onclick="run()">執行分析</button>
+    </div>
+
+    <div id="out">
+        <table>
+            <thead>
+                <tr>
+                    <th>最終順位</th><th>原始序號</th><th>地名</th><th>Size</th><th>全文次數</th><th>排序理由</th>
+                </tr>
+            </thead>
+            <tbody id="tb"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+/**
+ * 精確解析 CSV 行，處理引號內的逗號
+ */
+function splitCSVLine(line) {
+    const result = [];
+    let cur = '', inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"') {
+            inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+            result.push(cur.trim());
+            cur = '';
+        } else {
+            cur += char;
+        }
+    }
+    result.push(cur.trim());
+    return result;
+}
+
+async function run() {
+    const dFile = document.getElementById('fD').files[0];
+    const cFile = document.getElementById('fC').files[0];
+    const hName = document.getElementById('hN').value.trim();
+
+    if (!dFile || !cFile) return alert("請選取檔案");
+
+    const dText = await dFile.text();
+    const cText = await cFile.text();
+
+    const cLines = cText.split(/\r?\n/).filter(l => l.trim());
+    // 使用精確解析處理 Header
+    const header = splitCSVLine(cLines[0]);
+    const sIdx = header.indexOf("Size");
+    const nIdx = header.indexOf("地名");
+    const iIdx = header.indexOf("序號");
+
+    const results = cLines.slice(1).map((line, idx) => {
+        // 使用精確解析處理每一行資料
+        const cells = splitCSVLine(line);
+        const name = (cells[nIdx] || "").replace(/^"|"$/g, '').trim();
+        if (!name) return null;
+
+        // 次數統計邏輯（維持正確的部分）
+        const freq = dText.split(name).length - 1;
+
+        return {
+            id: cells[iIdx] || (idx + 1),
+            name: name,
+            size: parseInt(cells[sIdx]) || 0,
+            freq: freq,
+            isH: name === hName,
+            origIdx: idx
+        };
+    }).filter(x => x);
+
+    // 排序：1. 高亮 > 2. Size 小 > 3. 次數多 > 4. 原始序號
+    results.sort((a, b) => {
+        if (a.isH !== b.isH) return a.isH ? -1 : 1;
+        if (a.size !== b.size) return a.size - b.size;
+        if (a.freq !== b.freq) return b.freq - a.freq;
+        return a.origIdx - b.origIdx;
+    });
+
+    let html = "";
+    results.forEach((r, i) => {
+        html += `<tr class="${r.isH ? 'is-h' : ''}">
+            <td>${i+1}</td>
+            <td>${r.id}</td>
+            <td>${r.name}</td>
+            <td class="debug-size">${r.size}</td>
+            <td>${r.freq}</td>
+            <td>${r.isH ? '【高亮優先】' : 'Size '+r.size+' > 次數 '+r.freq}</td>
+        </tr>`;
+    });
+    document.getElementById('tb').innerHTML = html;
+}
+</script>
+</body>
+</html>
