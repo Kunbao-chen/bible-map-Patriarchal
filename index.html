@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V13.3.0</title>
+    <title>亞伯拉罕史地互動地圖 V13.3.2</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -191,7 +191,9 @@
     function parseLocationLogic(locStr, db) { const result = { paths: [], points: [] }; locStr.split('+').map(b => b.trim()).forEach(block => { if (block.includes('→')) { const chain = block.split('→').map(p => findBestMatch(p.replace(/\(.*?\)/g, '').trim(), db)).filter(p => p); if (chain.length > 1) result.paths.push(chain); chain.forEach(p => result.points.push(p)); } else { const pt = findBestMatch(block.replace(/\(.*?\)/g, '').trim(), db); if (pt) result.points.push(pt); } }); return result; }
 
     function applyMarkerStyles() {
-        const s = pz ? pz.getScale() : 1, anti = s > 1 ? 1 / s : 1;
+        const s = pz ? pz.getScale() : 1;
+        // 放大時保持視覺大小不變，縮小時隨地圖縮小
+        const anti = s > 1 ? 1 / s : 1;
         document.querySelectorAll('.marker').forEach(m => { const gain = parseInt(m.dataset.size)||0, label = m.querySelector('.label'); label.style.fontSize = (baseMarkerFontSize + (gain * 1.5)) + 'px'; m.style.transform = `translate(-50%, -50%) scale(${anti})`; });
     }
 
@@ -215,6 +217,7 @@
     function resetView() { pz.reset(); applyMarkerStyles(); refreshCollision(); }
     function adjustFontSize(delta) { 
         baseMarkerFontSize = Math.max(8, Math.min(30, baseMarkerFontSize + delta)); 
+        // 同步更新 CSS 變數以影響面板文字
         document.documentElement.style.setProperty('--base-fs', baseMarkerFontSize + 'px');
         applyMarkerStyles(); refreshCollision(); const cur = pz.getPan(); pz.pan(cur.x, cur.y, { force: true }); 
     }
