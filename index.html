@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V13.3.2</title>
+    <title>亞伯拉罕史地互動地圖 V13.3.3</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -101,8 +101,8 @@
     let pz, eventData = [], filteredData = [], allCoords = [], locFreq = {}, currentFolder = '', currentMapIdx = -1, currentEventIdx = -1, baseMarkerFontSize = 13, fullText = '';
     let searchHistory = JSON.parse(localStorage.getItem('bibleSearchHistory') || '[]');
 
+    // 基礎功能與搜尋邏輯 (略，與 V13.3.0 一致)
     function toggleSearch() { const input = document.getElementById('search-input'); const isOpening = !input.classList.contains('open'); input.classList.toggle('open'); if (isOpening) { input.focus(); } else { hideHistory(); } }
-
     function handleSearch(keyword) {
         const input = document.getElementById('search-input'); const term = (keyword !== undefined ? keyword : input.value).trim().toLowerCase();
         const clearBtn = document.getElementById('search-clear'); clearBtn.style.display = term ? 'block' : 'none';
@@ -113,21 +113,13 @@
         renderTable(filteredData); if (term && keyword === undefined) saveHistory(term);
         if (term && filteredData.length > 0) { selectEvent(0); document.getElementById('list-container').scrollTop = 0; }
     }
-
-    function clearSearch() {
-        const lastId = currentEventIdx !== -1 ? filteredData[currentEventIdx].id : null;
-        const input = document.getElementById('search-input'); input.value = ''; input.classList.remove('open');
-        document.getElementById('search-clear').style.display = 'none'; hideHistory(); handleSearch("");
-        if (lastId) { const newIdx = filteredData.findIndex(d => d.id === lastId); if (newIdx !== -1) { selectEvent(newIdx); const r = document.getElementById('table-body').rows[newIdx]; if(r) r.scrollIntoView({block:'center'}); } }
-    }
-
+    function clearSearch() { const lastId = currentEventIdx !== -1 ? filteredData[currentEventIdx].id : null; const input = document.getElementById('search-input'); input.value = ''; input.classList.remove('open'); document.getElementById('search-clear').style.display = 'none'; hideHistory(); handleSearch(""); if (lastId) { const newIdx = filteredData.findIndex(d => d.id === lastId); if (newIdx !== -1) { selectEvent(newIdx); const r = document.getElementById('table-body').rows[newIdx]; if(r) r.scrollIntoView({block:'center'}); } } }
     function saveHistory(term) { if (!term.trim()) return; searchHistory = [term, ...searchHistory.filter(h => h !== term)].slice(0, 10); localStorage.setItem('bibleSearchHistory', JSON.stringify(searchHistory)); renderHistory(); }
     function renderHistory() { const panel = document.getElementById('search-history'); panel.innerHTML = searchHistory.map(h => `<div class="history-item" onclick="useHistory('${h}')"><span>${h}</span><span style="color:#ccc" onclick="deleteHistory(event, '${h}')">×</span></div>`).join(''); }
     function useHistory(h) { document.getElementById('search-input').value = h; handleSearch(h); hideHistory(); }
     function deleteHistory(e, h) { e.stopPropagation(); searchHistory = searchHistory.filter(item => item !== h); localStorage.setItem('bibleSearchHistory', JSON.stringify(searchHistory)); renderHistory(); }
     function showHistory() { if(searchHistory.length) document.getElementById('search-history').style.display = 'block'; renderHistory(); }
     function hideHistory() { document.getElementById('search-history').style.display = 'none'; }
-
     function selectEvent(idxInFiltered) { if (idxInFiltered < 0 || idxInFiltered >= filteredData.length) return; currentEventIdx = idxInFiltered; const item = filteredData[idxInFiltered]; Array.from(document.getElementById('table-body').rows).forEach((r, i) => r.className = i === idxInFiltered ? 'active-row' : ''); updateMapAndInfo(item); }
     function navEvent(step) { const nextIdx = currentEventIdx + step; if (nextIdx >= 0 && nextIdx < filteredData.length) { selectEvent(nextIdx); const r = document.getElementById('table-body').rows[nextIdx]; if(r) r.scrollIntoView({behavior:'smooth', block:'center'}); } }
 
@@ -176,7 +168,6 @@
     function renderTable(data) { const tbody = document.getElementById('table-body'); tbody.innerHTML = ''; data.forEach((item, i) => { const tr = document.createElement('tr'); tr.innerHTML = `<td width="40" style="padding:12px; border-bottom:1px solid #eee;">${item.id}</td><td style="padding:12px; border-bottom:1px solid #eee;">${item.event}</td>`; tr.onclick = () => selectEvent(i); tbody.appendChild(tr); }); }
     function updateInfoPanel(item) { document.getElementById('info-area').style.display = 'flex'; document.getElementById('info-title').innerText = item.event; document.getElementById('info-time').innerText = item.time; document.getElementById('info-path').innerText = `地點：${item.loc}`; document.getElementById('info-script').innerText = item.script; document.getElementById('info-note').innerText = item.note; }
     function toggleInfo() { const body = document.getElementById('info-body'), arrow = document.getElementById('info-arrow'), area = document.getElementById('info-area'); if (body.style.display === 'none') { body.style.display = 'block'; area.style.flex = "0 0 45%"; arrow.innerText = '▼'; } else { body.style.display = 'none'; area.style.flex = "0 0 44px"; arrow.innerText = '▲'; } }
-
     function parseCSV(t) { const rows = []; let row = [], cell = '', q = false; for (let i = 0; i < t.length; i++) { let c = t[i], n = t[i+1]; if (c === '"' && q && n === '"') { cell += '"'; i++; } else if (c === '"') q = !q; else if (c === ',' && !q) { row.push(cell.trim()); cell = ''; } else if ((c === '\n' || c === '\r') && !q) { if (row.length > 0 || cell) { row.push(cell.trim()); rows.push(row); } row = []; cell = ''; if (c === '\r' && n === '\n') i++; } else cell += c; } if (row.length > 0 || cell) { row.push(cell.trim()); rows.push(row); } return rows; }
 
     async function loadProject(folder) {
@@ -190,12 +181,26 @@
     function findBestMatch(t, db) { let b = null, m = Infinity; for (const i of db) { if (i.n === t) return i; if (i.n.includes(t) || t.includes(i.n)) { let d = Math.abs(i.n.length - t.length); if (d < m) { m = d; b = i; } } } return b; }
     function parseLocationLogic(locStr, db) { const result = { paths: [], points: [] }; locStr.split('+').map(b => b.trim()).forEach(block => { if (block.includes('→')) { const chain = block.split('→').map(p => findBestMatch(p.replace(/\(.*?\)/g, '').trim(), db)).filter(p => p); if (chain.length > 1) result.paths.push(chain); chain.forEach(p => result.points.push(p)); } else { const pt = findBestMatch(block.replace(/\(.*?\)/g, '').trim(), db); if (pt) result.points.push(pt); } }); return result; }
 
+    // === 精準還原與修正區域 ===
     function applyMarkerStyles() {
         const s = pz ? pz.getScale() : 1;
-        // 放大時保持視覺大小不變，縮小時隨地圖縮小
-        const anti = s > 1 ? 1 / s : 1;
-        document.querySelectorAll('.marker').forEach(m => { const gain = parseInt(m.dataset.size)||0, label = m.querySelector('.label'); label.style.fontSize = (baseMarkerFontSize + (gain * 1.5)) + 'px'; m.style.transform = `translate(-50%, -50%) scale(${anti})`; });
+        // 回滾至 13.3.0：無論縮放，始終保持 anti = 1/s，確保地圖文字視覺大小不變
+        const anti = s > 0 ? 1 / s : 1;
+        document.querySelectorAll('.marker').forEach(m => { 
+            const gain = parseInt(m.dataset.size)||0, label = m.querySelector('.label'); 
+            label.style.fontSize = (baseMarkerFontSize + (gain * 1.5)) + 'px'; 
+            m.style.transform = `translate(-50%, -50%) scale(${anti})`; 
+        });
     }
+
+    function adjustFontSize(delta) { 
+        baseMarkerFontSize = Math.max(8, Math.min(30, baseMarkerFontSize + delta)); 
+        // 保留面板文字同步控制
+        document.documentElement.style.setProperty('--base-fs', baseMarkerFontSize + 'px');
+        applyMarkerStyles(); refreshCollision(); 
+        const cur = pz.getPan(); pz.pan(cur.x, cur.y, { force: true }); 
+    }
+    // === 還原結束 ===
 
     function flyTo(pts) {
         if (!pts.length) return; const img = document.getElementById('bg-map'), container = document.getElementById('map-section'); if (!img.offsetWidth) return;
@@ -204,23 +209,15 @@
         const currentMarkerX = (imgRect.left - containerRect.left) + (imgRect.width * (avgPctX / 100)), currentMarkerY = (imgRect.top - containerRect.top) + (imgRect.height * (avgPctY / 100));
         pz.pan(currentPan.x + (((containerRect.width/2)-currentMarkerX)/sc), currentPan.y + (((containerRect.height/2)-currentMarkerY)/sc), { animate: true, duration: 500 });
     }
-
     function updateMinScale() {
         const img = document.getElementById('bg-map'), c = document.getElementById('map-section'); if (!img.offsetWidth) return;
         const min = Math.max(c.clientWidth / img.offsetWidth, c.clientHeight / img.offsetHeight); pz.setOptions({ minScale: min });
         if (pz.getScale() < min) pz.zoom(min, { animate: false });
         const cur = pz.getPan(); pz.pan(cur.x, cur.y, { force: true });
     }
-
     function syncOverlay() { const img = document.getElementById('bg-map'), ov = document.getElementById('overlay-container'); ov.style.width = img.offsetWidth + 'px'; ov.style.height = img.offsetHeight + 'px'; }
     function toggleFab() { const m = document.getElementById('fab-menu'); m.style.display = m.style.display === 'none' ? 'flex' : 'none'; }
     function resetView() { pz.reset(); applyMarkerStyles(); refreshCollision(); }
-    function adjustFontSize(delta) { 
-        baseMarkerFontSize = Math.max(8, Math.min(30, baseMarkerFontSize + delta)); 
-        // 同步更新 CSS 變數以影響面板文字
-        document.documentElement.style.setProperty('--base-fs', baseMarkerFontSize + 'px');
-        applyMarkerStyles(); refreshCollision(); const cur = pz.getPan(); pz.pan(cur.x, cur.y, { force: true }); 
-    }
 
     window.onload = async () => {
         const el = document.getElementById('panzoom-element'); pz = Panzoom(el, { maxScale: 8, contain: 'outside', animate: true });
