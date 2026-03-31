@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V13.2.2</title>
+    <title>亞伯拉罕史地互動地圖 V13.3.0</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
-        :root { --gold: #c5a059; --dark: #2c3e50; --brown: #5d4037; --ink-blue: rgba(50, 75, 95, 0.6); --handle-bg: #ddd; }
+        :root { --gold: #c5a059; --dark: #2c3e50; --brown: #5d4037; --ink-blue: rgba(50, 75, 95, 0.6); --handle-bg: #ddd; --base-fs: 14px; }
         * { box-sizing: border-box; }
         body { margin: 0; padding: 0; width: 100vw; height: 100dvh; overflow: hidden; background: #fdf6e3; font-family: "微軟正黑體", "Heiti TC", "Apple LiGothic Medium", sans-serif; }
         #app-container { display: flex; width: 100%; height: 100%; flex-direction: row; }
@@ -36,9 +36,10 @@
         #side-panel { background: white; display: flex; flex-direction: column; overflow: hidden; position: relative; }
         #info-area { display: none; flex-direction: column; background: #fff; flex: 0 0 45%; min-height: 44px; overflow: hidden; }
         #info-header { background: var(--dark); color: white; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; height: 44px; z-index: 5; }
-        #info-body { padding: 15px; overflow-y: auto; flex: 1; }
+        #info-body { padding: 15px; overflow-y: auto; flex: 1; font-size: var(--base-fs); }
         #resizer-inner { height: 12px; background: #eee; cursor: row-resize; display: flex; align-items: center; justify-content: center; touch-action: none; flex-shrink: 0; border-top: 1px solid #ddd; z-index: 10; }
         #list-container { flex: 1; overflow-y: auto; }
+        #list-container table { font-size: var(--base-fs); width: 100%; border-collapse: collapse; }
         tr.active-row td { background: #fffde7; font-weight: bold; border-left: 5px solid var(--gold); }
         .fab-container { position: absolute; left: 12px; top: 12px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; }
         .fab-main { width: 42px; height: 42px; background: rgba(255,255,255,0.4); backdrop-filter: blur(8px); border: 2px solid var(--brown); border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
@@ -83,7 +84,7 @@
         <div id="folder-nav"><select id="folder-select" onchange="loadProject(this.value)" style="width:100%; padding:8px;"><option value="">載入中...</option></select></div>
         <div id="info-area">
             <div id="info-header" onclick="toggleInfo()"><div>📜 詳情 <span id="info-arrow">▼</span></div><div style="display:flex; gap:10px;"><button onclick="navEvent(-1); event.stopPropagation();">◀</button><button onclick="navEvent(1); event.stopPropagation();">▶</button></div></div>
-            <div id="info-body" style="padding:15px; overflow-y:auto; flex:1;">
+            <div id="info-body">
                 <div id="info-time" style="color:#888;"></div>
                 <h3 id="info-title" style="color:var(--gold); margin:5px 0;"></h3>
                 <div id="info-path" style="background:#f9f9f9; padding:8px; border-radius:4px; margin:5px 0; font-weight:bold;"></div>
@@ -212,7 +213,11 @@
     function syncOverlay() { const img = document.getElementById('bg-map'), ov = document.getElementById('overlay-container'); ov.style.width = img.offsetWidth + 'px'; ov.style.height = img.offsetHeight + 'px'; }
     function toggleFab() { const m = document.getElementById('fab-menu'); m.style.display = m.style.display === 'none' ? 'flex' : 'none'; }
     function resetView() { pz.reset(); applyMarkerStyles(); refreshCollision(); }
-    function adjustFontSize(delta) { baseMarkerFontSize = Math.max(8, Math.min(30, baseMarkerFontSize + delta)); applyMarkerStyles(); refreshCollision(); const cur = pz.getPan(); pz.pan(cur.x, cur.y, { force: true }); }
+    function adjustFontSize(delta) { 
+        baseMarkerFontSize = Math.max(8, Math.min(30, baseMarkerFontSize + delta)); 
+        document.documentElement.style.setProperty('--base-fs', baseMarkerFontSize + 'px');
+        applyMarkerStyles(); refreshCollision(); const cur = pz.getPan(); pz.pan(cur.x, cur.y, { force: true }); 
+    }
 
     window.onload = async () => {
         const el = document.getElementById('panzoom-element'); pz = Panzoom(el, { maxScale: 8, contain: 'outside', animate: true });
