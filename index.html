@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V13.3.9</title>
+    <title>亞伯拉罕史地互動地圖 V13.4.0</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -65,8 +65,8 @@
         <div class="fab-container">
             <button class="fab-main" onclick="toggleFab()"><svg viewBox="0 0 24 24" width="22" fill="#5d4037"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg></button>
             <div id="fab-menu" class="fab-menu" style="display:none; flex-direction:column; gap:6px;">
-                <button onclick="pz.zoomIn({ animate: true, focal: { clientX: window.innerWidth/2, clientY: window.innerHeight/2 } })">+</button>
-                <button onclick="pz.zoomOut({ animate: true, focal: { clientX: window.innerWidth/2, clientY: window.innerHeight/2 } })">-</button>
+                <button onclick="simulateWheel(-1)">+</button>
+                <button onclick="simulateWheel(1)">-</button>
                 <button onclick="resetView()">↺</button>
                 <button onclick="adjustFontSize(1)" style="font-weight:bold;">A+</button>
                 <button onclick="adjustFontSize(-1)" style="font-weight:bold;">A-</button>
@@ -216,6 +216,17 @@
     function syncOverlay() { const img = document.getElementById('bg-map'), ov = document.getElementById('overlay-container'); ov.style.width = img.offsetWidth + 'px'; ov.style.height = img.offsetHeight + 'px'; }
     function toggleFab() { const m = document.getElementById('fab-menu'); m.style.display = m.style.display === 'none' ? 'flex' : 'none'; }
     function resetView() { pz.reset(); applyMarkerStyles(); refreshCollision(); }
+
+    // 修改部位 2：模擬滾輪橋接函數
+    function simulateWheel(delta) {
+        const rect = document.getElementById('map-section').getBoundingClientRect();
+        pz.zoomWithWheel({
+            clientX: rect.left + rect.width / 2,
+            clientY: rect.top + rect.height / 2,
+            deltaY: delta,
+            preventDefault: () => {}
+        });
+    }
 
     window.onload = async () => {
         const el = document.getElementById('panzoom-element'); pz = Panzoom(el, { maxScale: 8, contain: 'outside', animate: true });
