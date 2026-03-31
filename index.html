@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V12.0.1</title>
+    <title>亞伯拉罕史地互動地圖 V13.0.0</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -24,13 +24,15 @@
         #panzoom-element { display: inline-block; position: relative; }
         #bg-map { display: block; max-width: none; user-select: none; }
         
-        /* 標籤樣式 */
-        .marker { position: absolute; transform-origin: center; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; z-index: 10; cursor: pointer; }
-        .marker .dot { width: 5px; height: 5px; background: rgba(93,64,55,0.5); border-radius: 50%; margin-bottom: 2px; }
+        /* 標籤樣式：中心對齊優化 */
+        .marker { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; z-index: 10; cursor: pointer; }
+        .marker .dot { width: 5px; height: 5px; background: rgba(93,64,55,0.5); border-radius: 50%; z-index: 1; }
         .marker .label { 
+            margin-top: -12.5px; /* 手術刀修改：讓文字中心蓋住灰點 */
             opacity: 0; padding: 2px 6px; border-radius: 8px; background: rgba(255,255,255,0.9); 
             border: 1.5px solid var(--brown); white-space: nowrap; font-weight: bold; font-size: 13px; 
             color: var(--brown); transition: opacity 0.4s ease-in-out, transform 0.2s ease; pointer-events: none;
+            z-index: 2;
         }
         .marker.region-type .label { background: none !important; border: none !important; font-family: 'ZCOOL KuaiLe', cursive; color: var(--ink-blue); text-shadow: 0 0 5px #fdf6e3, 0 0 2px #fdf6e3; }
 
@@ -38,20 +40,15 @@
         .marker.highlight .label { opacity: 1 !important; animation: labelBreathe 0.8s infinite alternate ease-in-out; background: #fffde7 !important; border: 2px solid #d32f2f !important; color: #d32f2f !important; pointer-events: auto !important; }
         @keyframes labelBreathe { from { transform: translateY(0) scale(1); } to { transform: translateY(-6px) scale(1.05); } }
 
-        /* 搜尋介面修正：叉叉置於左側 */
         .search-container { position: absolute; right: 12px; top: 12px; z-index: 2000; display: flex; flex-direction: column; align-items: flex-end; }
         .search-bar-wrapper { display: flex; align-items: center; background: rgba(255,255,255,0.4); backdrop-filter: blur(8px); border-radius: 10px; border: 2px solid var(--brown); padding: 2px; }
-        .search-clear { cursor: pointer; display: none; padding: 0 8px; color: var(--brown); font-weight: bold; font-size: 18px; order: -1; } /* order -1 確保在最左 */
+        .search-clear { cursor: pointer; display: none; padding: 0 8px; color: var(--brown); font-weight: bold; font-size: 18px; order: -1; }
         #search-input { width: 0; opacity: 0; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); border: none; background: transparent; height: 32px; outline: none; font-size: 14px; }
         #search-input.open { width: 160px; opacity: 1; padding: 0 8px; }
         .search-btn { width: 34px; height: 34px; cursor: pointer; display: flex; align-items: center; justify-content: center; background: transparent; border: none; }
 
-        #search-history { 
-            display: none; width: 200px; background: white; border: 1px solid #ccc; border-radius: 8px; 
-            margin-top: 5px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); overflow-y: auto; max-height: 30dvh; 
-        }
+        #search-history { display: none; width: 200px; background: white; border: 1px solid #ccc; border-radius: 8px; margin-top: 5px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); overflow-y: auto; max-height: 30dvh; }
         .history-item { padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; cursor: pointer; font-size: 13px; }
-        .history-item:hover { background: #f9f9f9; }
 
         #resizer-main { background: var(--handle-bg); z-index: 1100; display: flex; align-items: center; justify-content: center; touch-action: none; }
         @media (min-width: 801px), (orientation: landscape) { #resizer-main { width: 12px; cursor: col-resize; height: 100%; } #resizer-main::after { content: "⋮"; } }
@@ -129,57 +126,33 @@
         if (isOpening) { input.focus(); } else { hideHistory(); }
     }
 
-    // --- 高效率計次搜尋與排序 ---
     function handleSearch(keyword) {
         const input = document.getElementById('search-input');
         const term = (keyword !== undefined ? keyword : input.value).trim().toLowerCase();
         const clearBtn = document.getElementById('search-clear');
-        
         clearBtn.style.display = term ? 'block' : 'none';
-
-        if (!term) {
-            filteredData = [...eventData];
-        } else {
+        if (!term) { filteredData = [...eventData]; } else {
             const safeTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const regex = new RegExp(safeTerm, 'gi');
-
-            filteredData = eventData
-                .map(item => {
-                    const match = item._searchStr.match(regex);
-                    return { ...item, score: match ? match.length : 0 };
-                })
-                .filter(item => item.score > 0)
-                .sort((a, b) => b.score - a.score);
+            filteredData = eventData.map(item => {
+                const match = item._searchStr.match(regex);
+                return { ...item, score: match ? match.length : 0 };
+            }).filter(item => item.score > 0).sort((a, b) => b.score - a.score);
         }
-        
         renderTable(filteredData);
         if (term && keyword === undefined) saveHistory(term);
-        
-        // 搜尋完畢主動點選第一項
-        if (term && filteredData.length > 0) {
-            selectEvent(0);
-            document.getElementById('list-container').scrollTop = 0;
-        }
+        if (term && filteredData.length > 0) { selectEvent(0); document.getElementById('list-container').scrollTop = 0; }
     }
 
     function clearSearch() {
         const lastId = currentEventIdx !== -1 ? filteredData[currentEventIdx].id : null;
         const input = document.getElementById('search-input');
-        input.value = '';
-        input.classList.remove('open');
+        input.value = ''; input.classList.remove('open');
         document.getElementById('search-clear').style.display = 'none';
-        hideHistory();
-        
-        handleSearch(""); // 重置列表
-        
-        // 保留最後選取的事件
+        hideHistory(); handleSearch("");
         if (lastId) {
             const newIdx = filteredData.findIndex(d => d.id === lastId);
-            if (newIdx !== -1) {
-                selectEvent(newIdx);
-                const r = document.getElementById('table-body').rows[newIdx];
-                if(r) r.scrollIntoView({block:'center'});
-            }
+            if (newIdx !== -1) { selectEvent(newIdx); const r = document.getElementById('table-body').rows[newIdx]; if(r) r.scrollIntoView({block:'center'}); }
         }
     }
 
@@ -192,27 +165,11 @@
 
     function renderHistory() {
         const panel = document.getElementById('search-history');
-        panel.innerHTML = searchHistory.map(h => `
-            <div class="history-item" onclick="useHistory('${h}')">
-                <span>${h}</span>
-                <span style="color:#ccc" onclick="deleteHistory(event, '${h}')">×</span>
-            </div>
-        `).join('');
+        panel.innerHTML = searchHistory.map(h => `<div class="history-item" onclick="useHistory('${h}')"><span>${h}</span><span style="color:#ccc" onclick="deleteHistory(event, '${h}')">×</span></div>`).join('');
     }
 
-    function useHistory(h) {
-        document.getElementById('search-input').value = h;
-        handleSearch(h);
-        hideHistory();
-    }
-
-    function deleteHistory(e, h) {
-        e.stopPropagation();
-        searchHistory = searchHistory.filter(item => item !== h);
-        localStorage.setItem('bibleSearchHistory', JSON.stringify(searchHistory));
-        renderHistory();
-    }
-
+    function useHistory(h) { document.getElementById('search-input').value = h; handleSearch(h); hideHistory(); }
+    function deleteHistory(e, h) { e.stopPropagation(); searchHistory = searchHistory.filter(item => item !== h); localStorage.setItem('bibleSearchHistory', JSON.stringify(searchHistory)); renderHistory(); }
     function showHistory() { if(searchHistory.length) document.getElementById('search-history').style.display = 'block'; renderHistory(); }
     function hideHistory() { document.getElementById('search-history').style.display = 'none'; }
 
@@ -220,10 +177,7 @@
         if (idxInFiltered < 0 || idxInFiltered >= filteredData.length) return;
         currentEventIdx = idxInFiltered;
         const item = filteredData[idxInFiltered];
-        
-        Array.from(document.getElementById('table-body').rows).forEach((r, i) => 
-            r.className = i === idxInFiltered ? 'active-row' : ''
-        );
+        Array.from(document.getElementById('table-body').rows).forEach((r, i) => r.className = i === idxInFiltered ? 'active-row' : '');
         updateMapAndInfo(item);
     }
 
@@ -266,7 +220,6 @@
                 sl.appendChild(line);
             }
         });
-
         const existingMarkers = Array.from(ml.querySelectorAll('.marker'));
         const newPointNames = db.map(d => d.n);
         existingMarkers.forEach(m => { if (!newPointNames.includes(m.dataset.name)) m.remove(); });
@@ -275,85 +228,50 @@
             const isH = logic.points.some(p => p.n === data.n);
             let m = ml.querySelector(`.marker[data-name="${data.n}"]`);
             if (!m) {
-                m = document.createElement('div');
-                m.className = 'marker';
-                m.dataset.name = data.n;
+                m = document.createElement('div'); m.className = 'marker'; m.dataset.name = data.n;
                 m.innerHTML = `<div class="dot"></div><div class="label">${data.n}</div>`;
-                m.onclick = (e) => {
-                    e.stopPropagation();
-                    const input = document.getElementById('search-input');
-                    input.classList.add('open');
-                    input.value = data.n;
-                    handleSearch(data.n);
-                };
+                m.onclick = (e) => { e.stopPropagation(); const input = document.getElementById('search-input'); input.classList.add('open'); input.value = data.n; handleSearch(data.n); };
                 ml.appendChild(m);
             }
             m.className = `marker ${isH ? 'highlight' : ''} ${data.size > 2 ? 'region-type' : ''}`;
             m.style.left = data.x + '%'; m.style.top = data.y + '%';
-            
-            // --- [手術刀置換：注入 Size 與 Freq 資料] ---
-            m.dataset.size = data.size;
-            m.dataset.freq = fullText.split(data.n).length - 1;
-            // ----------------------------------------
+            m.dataset.size = data.size; m.dataset.freq = fullText.split(data.n).length - 1;
         });
         applyMarkerStyles();
         if (logic.points.length) flyTo(logic.points);
         setTimeout(refreshCollision, 60); 
     }
 
-function refreshCollision() {
-    // 1. 分出特權組與平民組
-    const allMarkers = Array.from(document.querySelectorAll('.marker'));
-    const highlights = allMarkers.filter(m => m.classList.contains('highlight'));
-    const commons = allMarkers.filter(m => !m.classList.contains('highlight'));
-    
-    // 2. 僅對平民組進行排序競爭
-    commons.sort((a, b) => {
-        // 第一階：Size 小優先
-        const aSize = parseInt(a.dataset.size) || 0;
-        const bSize = parseInt(b.dataset.size) || 0;
-        if (aSize !== bSize) return aSize - bSize;
-
-        // 第二階：頻率高優先
-        const aFreq = parseInt(a.dataset.freq) || 0;
-        const bFreq = parseInt(b.dataset.freq) || 0;
-        if (aFreq !== bFreq) return bFreq - aFreq;
-
-        // 第三階：確定性地名排序 (補丁)
-        return a.dataset.name.localeCompare(b.dataset.name);
-    });
-
-    const occupied = [];
-    
-    // 3. 處理平民組顯示邏輯（會互相迴避）
-    commons.forEach(m => {
-        const label = m.querySelector('.label');
-        const rect = label.getBoundingClientRect();
-        const isOverlap = occupied.some(o => !(rect.right<o.left || rect.left>o.right || rect.bottom<o.top || rect.top>o.bottom));
+    function refreshCollision() {
+        const allMarkers = Array.from(document.querySelectorAll('.marker'));
+        const highlights = allMarkers.filter(m => m.classList.contains('highlight'));
+        const commons = allMarkers.filter(m => !m.classList.contains('highlight'));
         
-        if (isOverlap) {
-            label.style.opacity = "0";
-            m.style.pointerEvents = "none";
-        } else { 
-            label.style.opacity = "1"; 
-            m.style.pointerEvents = "auto";
-            occupied.push(rect); 
-        }
-    });
+        commons.sort((a, b) => {
+            const aSize = parseInt(a.dataset.size) || 0;
+            const bSize = parseInt(b.dataset.size) || 0;
+            if (aSize !== bSize) return aSize - bSize;
+            const aFreq = parseInt(a.dataset.freq) || 0;
+            const bFreq = parseInt(b.dataset.freq) || 0;
+            if (aFreq !== bFreq) return bFreq - aFreq;
+            return a.dataset.name.localeCompare(b.dataset.name);
+        });
 
-    // 4. 特權組直接強制顯示，不參與 occupied 計算，也不被 occupied 影響
-    highlights.forEach(m => {
-        const label = m.querySelector('.label');
-        label.style.opacity = "1";
-        m.style.pointerEvents = "auto";
-    });
-}
+        const occupied = [];
+        commons.forEach(m => {
+            const label = m.querySelector('.label');
+            const rect = label.getBoundingClientRect();
+            const isOverlap = occupied.some(o => !(rect.right<o.left || rect.left>o.right || rect.bottom<o.top || rect.top>o.bottom));
+            if (isOverlap) { label.style.opacity = "0"; m.style.pointerEvents = "none"; } 
+            else { label.style.opacity = "1"; m.style.pointerEvents = "auto"; occupied.push(rect); }
+        });
+        highlights.forEach(m => { const label = m.querySelector('.label'); label.style.opacity = "1"; m.style.pointerEvents = "auto"; });
+    }
 
     function initResizers() {
         const rMain = document.getElementById('resizer-main'), side = document.getElementById('side-panel');
         const rInner = document.getElementById('resizer-inner'), info = document.getElementById('info-area');
         let startX, startY, startW, startH;
-
         rMain.onmousedown = rMain.ontouchstart = (e) => {
             e.preventDefault();
             const pointerX = e.clientX || (e.touches ? e.touches[0].clientX : 0);
@@ -362,21 +280,15 @@ function refreshCollision() {
             window.onmousemove = window.ontouchmove = (ev) => {
                 const x = ev.clientX || (ev.touches ? ev.touches[0].clientX : 0);
                 const y = ev.clientY || (ev.touches ? ev.touches[0].clientY : 0);
-                if (window.innerWidth < window.innerHeight && window.matchMedia("(orientation: portrait)").matches) {
-                    side.style.flex = `0 0 ${Math.max(100, Math.min(startH + (startY - y), window.innerHeight * 0.8))}px`;
-                } else {
-                    side.style.flex = "none"; 
-                    side.style.width = `${Math.max(200, Math.min(startW + (startX - x), window.innerWidth * 0.7))}px`;
-                }
+                if (window.innerWidth < window.innerHeight && window.matchMedia("(orientation: portrait)").matches) { side.style.flex = `0 0 ${Math.max(100, Math.min(startH + (startY - y), window.innerHeight * 0.8))}px`; }
+                else { side.style.flex = "none"; side.style.width = `${Math.max(200, Math.min(startW + (startX - x), window.innerWidth * 0.7))}px`; }
                 syncOverlay(); updateMinScale(); refreshCollision();
             };
             window.onmouseup = window.ontouchend = () => { window.onmousemove = window.ontouchmove = null; };
         };
-
         rInner.onmousedown = rInner.ontouchstart = (e) => {
             e.preventDefault();
-            startY = e.clientY || (e.touches ? e.touches[0].clientY : 0);
-            startH = info.offsetHeight;
+            startY = e.clientY || (e.touches ? e.touches[0].clientY : 0); startH = info.offsetHeight;
             window.onmousemove = window.ontouchmove = (ev) => {
                 const y = ev.clientY || (ev.touches ? ev.touches[0].clientY : 0);
                 info.style.flex = `0 0 ${Math.max(44, Math.min(startH + (y - startY), side.offsetHeight * 0.9))}px`;
@@ -386,13 +298,11 @@ function refreshCollision() {
     }
 
     function renderTable(data) {
-        const tbody = document.getElementById('table-body');
-        tbody.innerHTML = '';
+        const tbody = document.getElementById('table-body'); tbody.innerHTML = '';
         data.forEach((item, i) => {
             const tr = document.createElement('tr');
             tr.innerHTML = `<td width="40" style="padding:12px; border-bottom:1px solid #eee;">${item.id}</td><td style="padding:12px; border-bottom:1px solid #eee;">${item.event}</td>`;
-            tr.onclick = () => selectEvent(i);
-            tbody.appendChild(tr);
+            tr.onclick = () => selectEvent(i); tbody.appendChild(tr);
         });
     }
 
@@ -434,16 +344,10 @@ function refreshCollision() {
         const dRes = await fetch(`${folder}/data.csv?t=${Date.now()}`);
         eventData = parseCSV(await dRes.text()).slice(1).filter(r => r.length > 2).map(r => {
             const obj = { id:r[0], time:r[1], event:r[2], loc:r[3], script:r[4], note:r[5] };
-            obj._searchStr = Object.values(obj).join(' ').toLowerCase();
-            return obj;
+            obj._searchStr = Object.values(obj).join(' ').toLowerCase(); return obj;
         });
-        
-        // --- [手術刀置換：建立全文快取] ---
         fullText = eventData.map(d => d._searchStr).join(' ');
-        // ------------------------------
-
-        filteredData = [...eventData];
-        renderTable(filteredData);
+        filteredData = [...eventData]; renderTable(filteredData);
         for (let x = 1; x <= 15; x++) {
             try {
                 const cRes = await fetch(`${folder}/coords-${x}.csv?t=${Date.now()}`);
@@ -483,41 +387,28 @@ function refreshCollision() {
         const anti = s > 1 ? 1 / s : 1;
         document.querySelectorAll('.marker').forEach(m => {
             const gain = parseInt(m.dataset.size) || 0;
-            m.querySelector('.label').style.fontSize = (baseMarkerFontSize + (gain * 1.5)) + 'px';
+            const label = m.querySelector('.label');
+            label.style.fontSize = (baseMarkerFontSize + (gain * 1.5)) + 'px';
             m.style.transform = `translate(-50%, -50%) scale(${anti})`;
         });
     }
 
-    // --- [手術刀置換點] V11.0.0 物理歸一化 FlyTo ---
     function flyTo(pts) {
         if (!pts.length) return;
         const img = document.getElementById('bg-map'), container = document.getElementById('map-section');
         if (!img.offsetWidth) return;
-
         const containerRect = container.getBoundingClientRect();
         const imgRect = img.getBoundingClientRect();
         const sc = pz.getScale();
         const currentPan = pz.getPan();
-
         let avgPctX = 0, avgPctY = 0;
         pts.forEach(p => { avgPctX += parseFloat(p.x); avgPctY += parseFloat(p.y); });
-        avgPctX /= pts.length;
-        avgPctY /= pts.length;
-
+        avgPctX /= pts.length; avgPctY /= pts.length;
         const currentMarkerX = (imgRect.left - containerRect.left) + (imgRect.width * (avgPctX / 100));
         const currentMarkerY = (imgRect.top - containerRect.top) + (imgRect.height * (avgPctY / 100));
-
         const diffX = (containerRect.width / 2) - currentMarkerX;
         const diffY = (containerRect.height / 2) - currentMarkerY;
-
-        const correctedDiffX = diffX / sc;
-        const correctedDiffY = diffY / sc;
-
-        pz.pan(currentPan.x + correctedDiffX, currentPan.y + correctedDiffY, { 
-            animate: true, 
-            duration: 500,
-            easing: 'ease-out'
-        });
+        pz.pan(currentPan.x + (diffX / sc), currentPan.y + (diffY / sc), { animate: true, duration: 500 });
     }
 
     function updateMinScale() {
@@ -541,7 +432,6 @@ function refreshCollision() {
         pz = Panzoom(el, { maxScale: 8, contain: 'outside' });
         el.addEventListener('panzoomchange', () => { applyMarkerStyles(); refreshCollision(); });
         document.getElementById('map-section').addEventListener('wheel', pz.zoomWithWheel);
-        
         const res = await fetch(`folder.csv?t=${Date.now()}`);
         const folders = parseCSV(await res.text()).slice(1);
         const select = document.getElementById('folder-select');
