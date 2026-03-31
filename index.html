@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>亞伯拉罕史地互動地圖 V13.4.0</title>
+    <title>亞伯拉罕史地互動地圖 V13.4.1</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -106,16 +106,21 @@
     let searchHistory = JSON.parse(localStorage.getItem('bibleSearchHistory') || '[]');
 
     function toggleSearch() { const input = document.getElementById('search-input'); const isOpening = !input.classList.contains('open'); input.classList.toggle('open'); if (isOpening) { input.focus(); } else { hideHistory(); } }
+    
+    // 修改部位：搜尋排序邏輯改為 ID 序號排序
     function handleSearch(keyword) {
         const input = document.getElementById('search-input'); const term = (keyword !== undefined ? keyword : input.value).trim().toLowerCase();
         const clearBtn = document.getElementById('search-clear'); clearBtn.style.display = term ? 'block' : 'none';
         if (!term) { filteredData = [...eventData]; } else {
             const safeTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); const regex = new RegExp(safeTerm, 'gi');
-            filteredData = eventData.map(item => { const match = item._searchStr.match(regex); return { ...item, score: match ? match.length : 0 }; }).filter(item => item.score > 0).sort((a, b) => b.score - a.score);
+            filteredData = eventData.map(item => { const match = item._searchStr.match(regex); return { ...item, score: match ? match.length : 0 }; })
+                            .filter(item => item.score > 0)
+                            .sort((a, b) => parseInt(a.id) - parseInt(b.id)); // 核心修正：改用原始 ID 排序
         }
         renderTable(filteredData); if (term && keyword === undefined) saveHistory(term);
         if (term && filteredData.length > 0) { selectEvent(0); document.getElementById('list-container').scrollTop = 0; }
     }
+
     function clearSearch() { const lastId = currentEventIdx !== -1 ? filteredData[currentEventIdx].id : null; const input = document.getElementById('search-input'); input.value = ''; input.classList.remove('open'); document.getElementById('search-clear').style.display = 'none'; hideHistory(); handleSearch(""); if (lastId) { const newIdx = filteredData.findIndex(d => d.id === lastId); if (newIdx !== -1) { selectEvent(newIdx); const r = document.getElementById('table-body').rows[newIdx]; if(r) r.scrollIntoView({block:'center'}); } } }
     function saveHistory(term) { if (!term.trim()) return; searchHistory = [term, ...searchHistory.filter(h => h !== term)].slice(0, 10); localStorage.setItem('bibleSearchHistory', JSON.stringify(searchHistory)); renderHistory(); }
     function renderHistory() { const panel = document.getElementById('search-history'); panel.innerHTML = searchHistory.map(h => `<div class="history-item" onclick="useHistory('${h}')"><span>${h}</span><span style="color:#ccc" onclick="deleteHistory(event, '${h}')">×</span></div>`).join(''); }
@@ -217,7 +222,6 @@
     function toggleFab() { const m = document.getElementById('fab-menu'); m.style.display = m.style.display === 'none' ? 'flex' : 'none'; }
     function resetView() { pz.reset(); applyMarkerStyles(); refreshCollision(); }
 
-    // 修改部位 2：模擬滾輪橋接函數
     function simulateWheel(delta) {
         const rect = document.getElementById('map-section').getBoundingClientRect();
         pz.zoomWithWheel({
