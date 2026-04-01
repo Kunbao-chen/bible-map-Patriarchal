@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>聖經史地互動地圖 V1.0.1a</title>
+    <title>聖經史地互動地圖 V1.0.2</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -12,7 +12,7 @@
         body { margin: 0; padding: 0; width: 100vw; height: 100dvh; overflow: hidden; background: #fdf6e3; font-family: "微軟正黑體", "Heiti TC", "Apple LiGothic Medium", sans-serif; }
         #app-container { display: flex; width: 100%; height: 100%; flex-direction: row; }
 
-        /* 手機直立模式：手術刀修正 - 移除 !important 並確保寬度撐滿 */
+        /* 手機直立模式修正：移除 !important 確保 JS 能動態覆蓋 */
         @media (max-width: 800px) and (orientation: portrait) { 
             #app-container { flex-direction: column; } 
             #side-panel { width: 100%; flex: 0 0 33.33dvh; } 
@@ -168,30 +168,33 @@
         allMarkers.filter(m => m.classList.contains('highlight')).forEach(m => { const label = m.querySelector('.label'); label.style.opacity = "1"; m.style.pointerEvents = "auto"; });
     }
 
-    // 核心手術刀修正：解決跨維度殘留空白問題與鎖死問題
+    // V1.0.2 手術刀核心：維度鎖定與瞬間清場邏輯
     function initResizers() {
         const rMain = document.getElementById('resizer-main'), side = document.getElementById('side-panel'), rInner = document.getElementById('resizer-inner'), info = document.getElementById('info-area');
         let startX, startY, startW, startH;
         rMain.onmousedown = rMain.ontouchstart = (e) => {
-            e.preventDefault(); const px = e.clientX || e.touches[0].clientX, py = e.clientY || e.touches[0].clientY; startX = px; startY = py; startW = side.offsetWidth; startH = side.offsetHeight;
+            e.preventDefault(); const px = e.clientX || e.touches[0].clientX, py = e.clientY || e.touches[0].clientY; 
+            startX = px; startY = py; startW = side.offsetWidth; startH = side.offsetHeight;
+            
             window.onmousemove = window.ontouchmove = (ev) => { 
                 const x = ev.clientX || ev.touches[0].clientX, y = ev.clientY || ev.touches[0].clientY; 
-                
                 if (window.innerWidth < window.innerHeight && window.matchMedia("(orientation: portrait)").matches) { 
-                    // 修正點 1：清空橫向模式留下的殘留寬度，解決右側空白
-                    side.style.width = ""; 
+                    side.style.width = ""; // 手術刀：拉動瞬間即確保寬度不干擾
                     const newH = Math.max(100, Math.min(startH + (startY - y), window.innerHeight * 0.8));
                     side.style.flex = `0 0 ${newH}px`;
-                    side.style.height = `${newH}px`; 
+                    side.style.height = `${newH}px`;
                 } else { 
-                    // 修正點 2：清空直立模式留下的殘留高度，解決下方空白與擠壓問題
-                    side.style.height = "";
+                    side.style.height = ""; // 手術刀：拉動瞬間即確保高度不干擾
                     side.style.flex = "none"; 
                     side.style.width = `${Math.max(200, Math.min(startW + (startX - x), window.innerWidth * 0.7))}px`; 
                 } 
                 syncOverlay(); updateMinScale(); refreshCollision(); 
             };
-            window.onmouseup = window.ontouchend = () => { window.onmousemove = window.ontouchmove = null; };
+            window.onmouseup = window.ontouchend = () => { 
+                window.onmousemove = window.ontouchmove = null; 
+                // 手術刀：放開拉桿動作結束，再次執行維度清理，防止數值被帶到另一個維度當初始值
+                if (window.innerWidth < window.innerHeight) { side.style.width = ""; } else { side.style.height = ""; }
+            };
         };
         rInner.onmousedown = rInner.ontouchstart = (e) => { e.preventDefault(); startY = e.clientY || e.touches[0].clientY; startH = info.offsetHeight; window.onmousemove = window.ontouchmove = (ev) => { const y = ev.clientY || ev.touches[0].clientY; info.style.flex = `0 0 ${Math.max(44, Math.min(startH + (y - startY), side.offsetHeight * 0.85))}px`; }; window.onmouseup = window.ontouchend = () => { window.onmousemove = window.ontouchmove = null; }; };
     }
@@ -257,7 +260,18 @@
 
     window.onload = async () => {
         const el = document.getElementById('panzoom-element'); pz = Panzoom(el, { maxScale: 8, contain: 'outside', animate: true });
-        window.addEventListener('resize', () => { syncOverlay(); updateMinScale(); });
+        
+        // 手術刀：Resize 事件強制清場，無需等待使用者觸碰拉桿
+        window.addEventListener('resize', () => { 
+            const side = document.getElementById('side-panel');
+            if (window.innerWidth < window.innerHeight) { 
+                side.style.width = ""; 
+            } else { 
+                side.style.height = ""; 
+            }
+            syncOverlay(); updateMinScale(); refreshCollision(); 
+        });
+
         el.addEventListener('panzoomchange', () => { applyMarkerStyles(); refreshCollision(); });
         document.getElementById('map-section').addEventListener('wheel', pz.zoomWithWheel);
         const res = await fetch(`folder.csv?t=${Date.now()}`); const folders = parseCSV(await res.text()).slice(1);
