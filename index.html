@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>聖經史地互動地圖 V1.0.1</title>
+    <title>聖經史地互動地圖 V1.0.1a</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -12,7 +12,7 @@
         body { margin: 0; padding: 0; width: 100vw; height: 100dvh; overflow: hidden; background: #fdf6e3; font-family: "微軟正黑體", "Heiti TC", "Apple LiGothic Medium", sans-serif; }
         #app-container { display: flex; width: 100%; height: 100%; flex-direction: row; }
 
-        /* 手機直立模式：修正處 - 移除 !important 釋放 JS 控制權 */
+        /* 手機直立模式：手術刀修正 - 移除 !important 並確保寬度撐滿 */
         @media (max-width: 800px) and (orientation: portrait) { 
             #app-container { flex-direction: column; } 
             #side-panel { width: 100%; flex: 0 0 33.33dvh; } 
@@ -168,7 +168,7 @@
         allMarkers.filter(m => m.classList.contains('highlight')).forEach(m => { const label = m.querySelector('.label'); label.style.opacity = "1"; m.style.pointerEvents = "auto"; });
     }
 
-    // 修正處：優化 initResizers 直橫切換邏輯，移除鎖死
+    // 核心手術刀修正：解決跨維度殘留空白問題與鎖死問題
     function initResizers() {
         const rMain = document.getElementById('resizer-main'), side = document.getElementById('side-panel'), rInner = document.getElementById('resizer-inner'), info = document.getElementById('info-area');
         let startX, startY, startW, startH;
@@ -176,12 +176,16 @@
             e.preventDefault(); const px = e.clientX || e.touches[0].clientX, py = e.clientY || e.touches[0].clientY; startX = px; startY = py; startW = side.offsetWidth; startH = side.offsetHeight;
             window.onmousemove = window.ontouchmove = (ev) => { 
                 const x = ev.clientX || ev.touches[0].clientX, y = ev.clientY || ev.touches[0].clientY; 
-                // 直立判斷
+                
                 if (window.innerWidth < window.innerHeight && window.matchMedia("(orientation: portrait)").matches) { 
+                    // 修正點 1：清空橫向模式留下的殘留寬度，解決右側空白
+                    side.style.width = ""; 
                     const newH = Math.max(100, Math.min(startH + (startY - y), window.innerHeight * 0.8));
                     side.style.flex = `0 0 ${newH}px`;
-                    side.style.height = `${newH}px`; // 修正處：明確給予高度值
+                    side.style.height = `${newH}px`; 
                 } else { 
+                    // 修正點 2：清空直立模式留下的殘留高度，解決下方空白與擠壓問題
+                    side.style.height = "";
                     side.style.flex = "none"; 
                     side.style.width = `${Math.max(200, Math.min(startW + (startX - x), window.innerWidth * 0.7))}px`; 
                 } 
