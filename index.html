@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>聖經史地互動地圖 V1.0.6.2</title>
+    <title>聖經史地互動地圖 V1.0.6.1</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -27,6 +27,15 @@
         .marker.highlight { z-index: 1000 !important; }
         .marker.highlight .label { opacity: 1 !important; animation: labelBreathe 0.8s infinite alternate ease-in-out; background: #fffde7 !important; border: 2px solid #d32f2f !important; color: #d32f2f !important; pointer-events: auto !important; }
         @keyframes labelBreathe { from { transform: translateY(0) scale(1); } to { transform: translateY(-6px) scale(1.05); } }
+
+        /* V1.0.6 經文連結與燈箱樣式 */
+        .script-link { color: #2980b9; text-decoration: underline; cursor: pointer; font-weight: bold; }
+        .script-link:hover { color: #d32f2f; }
+        #script-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; display: flex; align-items: center; justify-content: center; }
+        .script-box { width: 90%; height: 85%; background: white; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .script-toolbar { padding: 10px; background: #f1f1f1; display: flex; gap: 8px; border-bottom: 1px solid #ccc; align-items: center; }
+        .script-toolbar button { padding: 6px 12px; border-radius: 6px; border: 1px solid #bbb; background: white; cursor: pointer; font-size: 13px; }
+        .script-toolbar button.active { background: var(--dark); color: white; border-color: var(--dark); }
 
         .search-container { position: absolute; right: 12px; top: 12px; z-index: 2000; display: flex; flex-direction: column; align-items: flex-end; }
         .search-bar-wrapper { display: flex; align-items: center; background: rgba(255,255,255,0.4); backdrop-filter: blur(8px); border-radius: 10px; border: 2px solid var(--brown); padding: 2px; }
@@ -53,10 +62,6 @@
         .fab-container { position: absolute; left: 12px; top: 12px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; }
         .fab-main { width: 42px; height: 42px; background: rgba(255,255,255,0.4); backdrop-filter: blur(8px); border: 2px solid var(--brown); border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .fab-menu button { width:34px; height:34px; border-radius:10px; border: 2px solid var(--brown); background: rgba(255,255,255,0.8); cursor: pointer; }
-        
-        /* 經文連結樣式 */
-        .script-link { color: #2980b9; cursor: pointer; text-decoration: underline; font-weight: bold; }
-        .script-link:hover { color: #3498db; }
     </style>
 </head>
 <body>
@@ -102,7 +107,7 @@
                 <div id="info-time" style="color:#888;"></div>
                 <h3 id="info-title" style="color:var(--gold); margin:5px 0;"></h3>
                 <div id="info-path" style="background:#f9f9f9; padding:8px; border-radius:4px; margin:5px 0; font-weight:bold;"></div>
-                <p id="info-script"></p>
+                <p id="info-script" style="color:#2980b9;"></p>
                 <div id="info-note"></div>
             </div>
         </div>
@@ -112,42 +117,42 @@
 </div>
 
 <script>
-    // V1.0.6.2 依照官方簡稱規範更新對照表
-    const SCRIPTURE_MAP = {
-        [span_0](start_span)// 無價珍珠 (依照 PDF Page 3)[span_0](end_span)
-        "罕": { lds: "pgp/abr" },
-        "摩西": { lds: "pgp/moses" },
-        "約太": { lds: "pgp/js-m" },
-        "約史": { lds: "pgp/js-h" },
-        "信": { lds: "pgp/a-of-f" },
-        [span_1](start_span)// 摩爾門經 (依照 PDF Page 3)[span_1](end_span)
-        "腓一": { lds: "bofm/1-ne" },
-        "腓二": { lds: "bofm/2-ne" },
-        "各": { lds: "bofm/jacob" },
-        "挪": { lds: "bofm/enos" },
-        "龍": { lds: "bofm/jarom" },
-        "奧": { lds: "bofm/omni" },
-        "語": { lds: "bofm/w-of-m" },
-        "摩賽": { lds: "bofm/mosiah" },
-        "阿": { lds: "bofm/alma" },
-        "曼": { lds: "bofm/hel" },
-        "腓三": { lds: "bofm/3-ne" },
-        "腓四": { lds: "bofm/4-ne" },
-        "摩爾門": { lds: "bofm/morm" },
-        "以": { lds: "bofm/ether" },
-        "乃": { lds: "bofm/moro" },
-        [span_2](start_span)// 舊約聖經部分簡稱 (依照 PDF Page 1-2)[span_2](end_span)
-        "創": { lds: "ot/gen" },
-        "出": { lds: "ot/ex" },
-        "亞": { lds: "ot/zech" }, // 撒迦利亞書
-        "太": { lds: "nt/matt" },
-        "約": { lds: "nt/john" }
-    };
-
+    // V1.0.6.1 統一對照表變數名
     let pz, eventData = [], filteredData = [], allCoords = [], currentFolder = '', currentMapIdx = -1, currentEventIdx = -1, baseMarkerFontSize = 13, fullText = '';
     let searchHistory = JSON.parse(localStorage.getItem('bibleSearchHistory') || '[]');
-    let lastPortraitHeight = "33.33dvh";
-    let lastLandscapeWidth = "33.33%";
+    let lastPortraitHeight = "33.33dvh"; 
+    let lastLandscapeWidth = "33.33%";    
+
+    const SCRIPTURE_MAP = {
+        "創": { std: "gen", lds: "ot/gen", fhl: "創" }, "出": { std: "ex", lds: "ot/ex", fhl: "出" }, "利": { std: "lev", lds: "ot/lev", fhl: "利" },
+        "民": { std: "num", lds: "ot/num", fhl: "民" }, "申": { std: "deut", lds: "ot/deut", fhl: "申" }, "書": { std: "josh", lds: "ot/josh", fhl: "書" },
+        "士": { std: "judg", lds: "ot/judg", fhl: "士" }, "得": { std: "ruth", lds: "ot/ruth", fhl: "得" }, "撒上": { std: "1-sam", lds: "ot/1-sam", fhl: "撒上" },
+        "撒下": { std: "2-sam", lds: "ot/2-sam", fhl: "撒下" }, "王上": { std: "1-kgs", lds: "ot/1-kgs", fhl: "王上" }, "王下": { std: "2-kgs", lds: "ot/2-kgs", fhl: "王下" },
+        "代上": { std: "1-chr", lds: "ot/1-chr", fhl: "代上" }, "代下": { std: "2-chr", lds: "ot/2-chr", fhl: "代下" }, "拉": { std: "ezra", lds: "ot/ezra", fhl: "拉" },
+        "尼": { std: "neh", lds: "ot/neh", fhl: "尼" }, "斯": { std: "esth", lds: "ot/esth", fhl: "斯" }, "伯": { std: "job", lds: "ot/job", fhl: "伯" },
+        "詩": { std: "ps", lds: "ot/ps", fhl: "詩" }, "箴": { std: "prov", lds: "ot/prov", fhl: "箴" }, "傳": { std: "eccl", lds: "ot/eccl", fhl: "傳" },
+        "歌": { std: "song", lds: "ot/song", fhl: "歌" }, "賽": { std: "isa", lds: "ot/isa", fhl: "賽" }, "耶": { std: "jer", lds: "ot/jer", fhl: "耶" },
+        "哀": { std: "lam", lds: "ot/lam", fhl: "哀" }, "結": { std: "ezek", lds: "ot/ezek", fhl: "結" }, "但": { std: "dan", lds: "ot/dan", fhl: "但" },
+        "何": { std: "hos", lds: "ot/hos", fhl: "何" }, "珥": { std: "joel", lds: "ot/joel", fhl: "珥" }, "摩": { std: "amos", lds: "ot/amos", fhl: "摩" },
+        "俄": { std: "obad", lds: "ot/obad", fhl: "俄" }, "拿": { std: "jonah", lds: "ot/jonah", fhl: "拿" }, "彌": { std: "micah", lds: "ot/micah", fhl: "彌" },
+        "鴻": { std: "nahum", lds: "ot/nahum", fhl: "鴻" }, "哈": { std: "hab", lds: "ot/hab", fhl: "哈" }, "番": { std: "zeph", lds: "ot/zeph", fhl: "番" },
+        "該": { std: "hag", lds: "ot/hag", fhl: "該" }, "亞": { std: "zech", lds: "ot/zech", fhl: "亞" }, "瑪": { std: "mal", lds: "ot/mal", fhl: "瑪" },
+        "太": { std: "matt", lds: "nt/matt", fhl: "太" }, "可": { std: "mark", lds: "nt/mark", fhl: "可" }, "路": { std: "luke", lds: "nt/luke", fhl: "路" },
+        "約": { std: "john", lds: "nt/john", fhl: "約" }, "徒": { std: "acts", lds: "nt/acts", fhl: "徒" }, "羅": { std: "rom", lds: "nt/rom", fhl: "羅" },
+        "林前": { std: "1-cor", lds: "nt/1-cor", fhl: "林前" }, "林後": { std: "2-cor", lds: "nt/2-cor", fhl: "林後" }, "加": { std: "gal", lds: "nt/gal", fhl: "加" },
+        "弗": { std: "eph", lds: "nt/eph", fhl: "弗" }, "腓": { std: "phil", lds: "nt/phil", fhl: "腓" }, "西": { std: "col", lds: "nt/col", fhl: "西" },
+        "帖前": { std: "1-thess", lds: "nt/1-thess", fhl: "帖前" }, "帖後": { std: "2-thess", lds: "nt/2-thess", fhl: "帖後" }, "提前": { std: "1-tim", lds: "nt/1-tim", fhl: "提前" },
+        "提後": { std: "2-tim", lds: "nt/2-tim", fhl: "提後" }, "多": { std: "titus", lds: "nt/titus", fhl: "多" }, "門": { std: "philem", lds: "nt/philem", fhl: "門" },
+        "希": { std: "heb", lds: "nt/heb", fhl: "希" }, "雅": { std: "jas", lds: "nt/jas", fhl: "雅" }, "彼前": { std: "1-pet", lds: "nt/1-pet", fhl: "彼前" },
+        "彼後": { std: "2-pet", lds: "nt/2-pet", fhl: "彼後" }, "約一": { std: "1-jn", lds: "nt/1-jn", fhl: "約一" }, "約二": { std: "2-jn", lds: "nt/2-jn", fhl: "約二" },
+        "約三": { std: "3-jn", lds: "nt/3-jn", fhl: "約三" }, "猶": { std: "jude", lds: "nt/jude", fhl: "猶" }, "啟": { std: "rev", lds: "nt/rev", fhl: "啟" },
+        "腓一": { std: "1-ne", lds: "bofm/1-ne", fhl: null }, "腓二": { std: "2-ne", lds: "bofm/2-ne", fhl: null }, "雅各": { std: "jacob", lds: "bofm/jacob", fhl: null },
+        "以挪": { std: "enos", lds: "bofm/enos", fhl: null }, "雅隆": { std: "jarom", lds: "bofm/jarom", fhl: null }, "奧": { std: "omni", lds: "bofm/omni", fhl: null },
+        "摩爾": { std: "w-of-m", lds: "bofm/w-of-m", fhl: null }, "摩賽": { std: "mosiah", lds: "bofm/mosiah", fhl: null }, "阿爾": { std: "alma", lds: "bofm/alma", fhl: null },
+        "希拉": { std: "hel", lds: "bofm/hel", fhl: null }, "腓三": { std: "3-ne", lds: "bofm/3-ne", fhl: null }, "腓四": { std: "4-ne", lds: "bofm/4-ne", fhl: null },
+        "摩爾門": { std: "morm", lds: "bofm/morm", fhl: null }, "以帖": { std: "ether", lds: "bofm/ether", fhl: null }, "摩羅": { std: "moro", lds: "bofm/moro", fhl: null },
+        "教約": { std: "dc", lds: "dc-testament/dc", fhl: null }, "摩西": { std: "moses", lds: "pgp/moses", fhl: null }, "亞伯": { std: "abr", lds: "pgp/abr", fhl: null }
+    };
 
     function toggleSearch() { const input = document.getElementById('search-input'); const isOpening = !input.classList.contains('open'); input.classList.toggle('open'); if (isOpening) { input.focus(); } else { hideHistory(); } }
     function handleSearch(keyword) { const input = document.getElementById('search-input'); const term = (keyword !== undefined ? keyword : input.value).trim().toLowerCase(); const clearBtn = document.getElementById('search-clear'); clearBtn.style.display = term ? 'block' : 'none'; if (!term) { filteredData = [...eventData]; } else { const safeTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); const regex = new RegExp(safeTerm, 'gi'); filteredData = eventData.map(item => { const match = item._searchStr.match(regex); return { ...item, score: match ? match.length : 0 }; }).filter(item => item.score > 0).sort((a, b) => parseInt(a.id) - parseInt(b.id)); } renderTable(filteredData); if (term && keyword === undefined) saveHistory(term); if (term && filteredData.length > 0) { selectEvent(0); document.getElementById('list-container').scrollTop = 0; } }
@@ -196,8 +201,7 @@
         const rMain = document.getElementById('resizer-main'), side = document.getElementById('side-panel'), rInner = document.getElementById('resizer-inner'), info = document.getElementById('info-area');
         let startX, startY, startW, startH;
         rMain.onmousedown = rMain.ontouchstart = (e) => {
-            e.preventDefault();
-            const px = e.clientX || e.touches[0].clientX, py = e.clientY || e.touches[0].clientY;
+            e.preventDefault(); const px = e.clientX || e.touches[0].clientX, py = e.clientY || e.touches[0].clientY;
             startX = px; startY = py; startW = side.offsetWidth; startH = side.offsetHeight;
             window.onmousemove = window.ontouchmove = (ev) => {
                 const x = ev.clientX || ev.touches[0].clientX, y = ev.clientY || ev.touches[0].clientY;
@@ -212,40 +216,86 @@
             };
             window.onmouseup = window.ontouchend = () => {
                 window.onmousemove = window.ontouchmove = null;
-                if (window.innerWidth < window.innerHeight) { lastPortraitHeight = side.style.height; } else { lastLandscapeWidth = side.style.width; }
+                if (window.innerWidth < window.innerHeight) lastPortraitHeight = side.style.height;
+                else lastLandscapeWidth = side.style.width;
             };
         };
         rInner.onmousedown = rInner.ontouchstart = (e) => { e.preventDefault(); startY = e.clientY || e.touches[0].clientY; startH = info.offsetHeight; window.onmousemove = window.ontouchmove = (ev) => { const y = ev.clientY || ev.touches[0].clientY; info.style.flex = `0 0 ${Math.max(44, Math.min(startH + (y - startY), side.offsetHeight * 0.85))}px`; }; window.onmouseup = window.ontouchend = () => { window.onmousemove = window.ontouchmove = null; }; };
     }
 
     function renderTable(data) { const tbody = document.getElementById('table-body'); tbody.innerHTML = ''; data.forEach((item, i) => { const tr = document.createElement('tr'); tr.innerHTML = `<td width="40" style="padding:12px; border-bottom:1px solid #eee;">${item.id}</td><td style="padding:12px; border-bottom:1px solid #eee;">${item.event}</td>`; tr.onclick = () => selectEvent(i); tbody.appendChild(tr); }); }
-
-    // V1.0.6.2 手術刀：更新解析邏輯與經文開啟功能
-    function updateInfoPanel(item) {
-        document.getElementById('info-area').style.display = 'flex';
-        document.getElementById('info-title').innerText = item.event;
-        document.getElementById('info-time').innerText = item.time;
-        document.getElementById('info-path').innerText = `地點：${item.loc}`;
+    
+    // V1.0.6.1 修正：精確的閉包捕捉邏輯
+    function updateInfoPanel(item) { 
+        document.getElementById('info-area').style.display = 'flex'; 
+        document.getElementById('info-title').innerText = item.event; 
+        document.getElementById('info-time').innerText = item.time; 
+        document.getElementById('info-path').innerText = `地點：${item.loc}`; 
         
-        // 支援格式：罕 1 | 罕 1:1 | 罕 1:1-5 (支援特殊符號 —)
-        const regex = /([\u4e00-\u9fa5—]+)\s*(\d+)(?::(\d+)(?:-(\d+))?)?/g;
-        
-        document.getElementById('info-script').innerHTML = item.script.replace(regex, (match, book, chap, sec) => {
-            if (SCRIPTURE_MAP[book]) {
-                const s = sec || 1;
-                return `<span class="script-link" onclick="openScripture('${book}', ${chap}, ${s})">${match}</span>`;
+        // 解析經文出處，確保 onclick 內的書名是當前匹配到的區域變數
+        const regex = /([\u4e00-\u9fa5]+)\s*(\d+):(\d+)/g;
+        document.getElementById('info-script').innerHTML = item.script.replace(regex, (match, bookName, chap, sec) => {
+            if (SCRIPTURE_MAP[bookName]) {
+                return `<span class="script-link" onclick="openScripture('${bookName}', ${chap}, ${sec})">${match}</span>`;
             }
             return match;
         });
-        document.getElementById('info-note').innerText = item.note;
+        document.getElementById('info-note').innerText = item.note; 
     }
 
-    function openScripture(bookKey, chap, sec) {
-        const entry = SCRIPTURE_MAP[bookKey];
-        if (!entry) return;
-        // LDS 官網網址組裝：https://www.churchofjesuschrist.org/study/scriptures/[路徑]/[章]?lang=zho&id=p[節]#p[節]
-        const url = `https://www.churchofjesuschrist.org/study/scriptures/${entry.lds}/${chap}?lang=zho&id=p${sec}#p${sec}`;
-        window.open(url, '_blank');
+    // V1.0.6.1 燈箱開啟函式
+    function openScripture(book, chap, sec) {
+        const overlay = document.createElement('div');
+        overlay.id = 'script-overlay';
+        overlay.onclick = (e) => { if(e.target === overlay) overlay.remove(); };
+        
+        const box = document.createElement('div');
+        box.className = 'script-box';
+        
+        const toolbar = document.createElement('div');
+        toolbar.className = 'script-toolbar';
+        
+        const btnLds = document.createElement('button');
+        btnLds.id = 'btn-lds'; btnLds.innerText = 'LDS 來源';
+        btnLds.onclick = () => changeScriptSource('lds', book, chap, sec);
+        
+        const btnFhl = document.createElement('button');
+        btnFhl.id = 'btn-fhl'; btnFhl.innerText = '備用 (和合本)';
+        btnFhl.onclick = () => changeScriptSource('fhl', book, chap, sec);
+        
+        const btnClose = document.createElement('button');
+        btnClose.style.marginLeft = 'auto'; btnClose.innerText = '關閉';
+        btnClose.onclick = () => overlay.remove();
+        
+        const iframe = document.createElement('iframe');
+        iframe.id = 'script-viewer';
+        iframe.style = "flex:1; border:none; background:white;";
+        
+        toolbar.appendChild(btnLds);
+        // 修正：使用正確的對照表名稱判斷 FHL 支援度
+        if(SCRIPTURE_MAP[book] && SCRIPTURE_MAP[book].fhl) toolbar.appendChild(btnFhl);
+        toolbar.appendChild(btnClose);
+        box.appendChild(toolbar);
+        box.appendChild(iframe);
+        overlay.appendChild(box);
+        document.body.appendChild(overlay);
+        
+        changeScriptSource('lds', book, chap, sec);
+    }
+
+    function changeScriptSource(type, book, chap, sec) {
+        const viewer = document.getElementById('script-viewer');
+        const entry = SCRIPTURE_MAP[book];
+        if(!entry) return;
+        document.querySelectorAll('.script-toolbar button').forEach(b => b.classList.remove('active'));
+        
+        if (type === 'lds') {
+            const btn = document.getElementById('btn-lds'); if(btn) btn.classList.add('active');
+            viewer.src = `https://www.churchofjesuschrist.org/study/scriptures/${entry.lds}/${chap}?lang=zho&id=p${sec}#p${sec}`;
+        } else {
+            const btn = document.getElementById('btn-fhl'); if(btn) btn.classList.add('active');
+            viewer.src = `https://bible.fhl.net/new/read.php?chineses=${encodeURIComponent(entry.fhl)}&chap=${chap}&sec=${sec}`;
+        }
     }
 
     function toggleInfo() { const body = document.getElementById('info-body'), arrow = document.getElementById('info-arrow'), area = document.getElementById('info-area'); if (body.style.display === 'none') { body.style.display = 'block'; area.style.flex = "0 0 45%"; arrow.innerText = '▼'; } else { body.style.display = 'none'; area.style.flex = "0 0 44px"; arrow.innerText = '▲'; } }
@@ -281,8 +331,11 @@
         const el = document.getElementById('panzoom-element'); pz = Panzoom(el, { maxScale: 8, contain: 'outside', animate: true });
         window.addEventListener('resize', () => { 
             const side = document.getElementById('side-panel');
-            if (window.innerWidth < window.innerHeight) { side.style.width = ""; side.style.height = lastPortraitHeight; side.style.flex = `0 0 ${lastPortraitHeight}`; } 
-            else { side.style.height = ""; side.style.width = lastLandscapeWidth; side.style.flex = "none"; }
+            if (window.innerWidth < window.innerHeight) {
+                side.style.width = ""; side.style.height = lastPortraitHeight; side.style.flex = `0 0 ${lastPortraitHeight}`;
+            } else {
+                side.style.height = ""; side.style.width = lastLandscapeWidth; side.style.flex = "none";
+            }
             syncOverlay(); updateMinScale(); refreshCollision(); 
         });
         el.addEventListener('panzoomchange', () => { applyMarkerStyles(); refreshCollision(); });
