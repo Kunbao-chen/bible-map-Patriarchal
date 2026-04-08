@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>聖經史地互動地圖 V1.0.7</title>
+    <title>聖經史地互動地圖 V1.0.8</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -94,40 +94,75 @@
     </div>
 </div>
 <script>
-    // V1.0.7 手術刀修正：語法校正與 Regex Unicode 相容性
+    // V1.0.8 修正：找回 V1.0.5 排序邏輯，並實現經文全名/簡寫兼容
     const SCRIPTURE_MAP = {
-        "罕": { lds: "pgp/abr" }, "摩西": { lds: "pgp/moses" }, "約太": { lds: "pgp/js-m" },
-        "約史": { lds: "pgp/js-h" }, "信": { lds: "pgp/a-of-f" }, "腓一": { lds: "bofm/1-ne" },
-        "腓二": { lds: "bofm/2-ne" }, "各": { lds: "bofm/jacob" }, "挪": { lds: "bofm/enos" },
-        "龍": { lds: "bofm/jarom" }, "奧": { lds: "bofm/omni" }, "語": { lds: "bofm/w-of-m" },
-        "摩賽": { lds: "bofm/mosiah" }, "阿": { lds: "bofm/alma" }, "曼": { lds: "bofm/hel" },
-        "腓三": { lds: "bofm/3-ne" }, "腓四": { lds: "bofm/4-ne" }, "摩爾門": { lds: "bofm/morm" },
-        "以": { lds: "bofm/ether" }, "乃": { lds: "bofm/moro" }, "創": { lds: "ot/gen" },
-        "出": { lds: "ot/ex" }, "利": { lds: "ot/lev" }, "民": { lds: "ot/num" },
-        "申": { lds: "ot/deut" }, "書": { lds: "ot/josh" }, "士": { lds: "ot/judg" },
-        "得": { lds: "ot/ruth" }, "撒上": { lds: "ot/1-sam" }, "撒下": { lds: "ot/2-sam" },
-        "王上": { lds: "ot/1-kgs" }, "王下": { lds: "ot/2-kgs" }, "代上": { lds: "ot/1-chr" },
-        "代下": { lds: "ot/2-chr" }, "拉": { lds: "ot/ezra" }, "尼": { lds: "ot/neh" },
-        "斯": { lds: "ot/esth" }, "伯": { lds: "ot/job" }, "詩": { lds: "ot/ps" },
-        "箴": { lds: "ot/prov" }, "傳": { lds: "ot/eccl" }, "歌": { lds: "ot/ss" },
-        "賽": { lds: "ot/isa" }, "耶": { lds: "ot/jer" }, "哀": { lds: "ot/lam" },
-        "結": { lds: "ot/ezek" }, "但": { lds: "ot/dan" }, "何": { lds: "ot/hos" },
-        "珥": { lds: "ot/joel" }, "摩": { lds: "ot/amos" }, "俄": { lds: "ot/obad" },
-        "拿": { lds: "ot/jonah" }, "彌": { lds: "ot/micah" }, "鴻": { lds: "ot/nahum" },
-        "哈": { lds: "ot/hab" }, "番": { lds: "ot/zeph" }, "該": { lds: "ot/hag" },
-        "亞": { lds: "ot/zech" }, "瑪": { lds: "ot/mal" }, "太": { lds: "nt/matt" },
-        "可": { lds: "nt/mark" }, "路": { lds: "nt/luke" }, "約": { lds: "nt/john" },
-        "徒": { lds: "nt/acts" }, "羅": { lds: "nt/rom" }, "林前": { lds: "nt/1-cor" },
-        "林後": { lds: "nt/2-cor" }, "加": { lds: "nt/gal" }, "弗": { lds: "nt/eph" },
-        "腓": { lds: "nt/phil" }, "西": { lds: "nt/col" }, "帖前": { lds: "nt/1-thes" },
-        "帖後": { lds: "nt/2-thes" }, "提前": { lds: "nt/1-tim" }, "提後": { lds: "nt/2-tim" },
-        "多": { lds: "nt/titus" }, "門": { lds: "nt/philem" }, "來": { lds: "nt/heb" },
-        "雅": { lds: "nt/james" }, "彼前": { lds: "nt/1-pet" }, "彼後": { lds: "nt/2-pet" },
-        "約一": { lds: "nt/1-jn" }, "約二": { lds: "nt/2-jn" }, "約三": { lds: "nt/3-jn" },
-        "猶": { lds: "nt/jude" }, "啟": { lds: "nt/rev" }
+        "罕": { lds: "pgp/abr" }, "亞伯拉罕書": { lds: "pgp/abr" },
+        "摩西": { lds: "pgp/moses" }, "摩西書": { lds: "pgp/moses" },
+        "約太": { lds: "pgp/js-m" }, "約史": { lds: "pgp/js-h" }, "信": { lds: "pgp/a-of-f" },
+        "腓一": { lds: "bofm/1-ne" }, "腓二": { lds: "bofm/2-ne" },
+        "各": { lds: "bofm/jacob" }, "雅各書": { lds: "bofm/jacob" },
+        "挪": { lds: "bofm/enos" }, "以挪士書": { lds: "bofm/enos" },
+        "龍": { lds: "bofm/jarom" }, "傑隆書": { lds: "bofm/jarom" },
+        "奧": { lds: "bofm/omni" }, "奧姆乃書": { lds: "bofm/omni" },
+        "語": { lds: "bofm/w-of-m" }, "摩門語": { lds: "bofm/w-of-m" },
+        "摩賽": { lds: "bofm/mosiah" }, "摩賽亞書": { lds: "bofm/mosiah" },
+        "阿": { lds: "bofm/alma" }, "阿爾瑪書": { lds: "bofm/alma" },
+        "曼": { lds: "bofm/hel" }, "希拉曼書": { lds: "bofm/hel" },
+        "腓三": { lds: "bofm/3-ne" }, "腓四": { lds: "bofm/4-ne" },
+        "摩爾門": { lds: "bofm/morm" }, "以": { lds: "bofm/ether" }, "以帖書": { lds: "bofm/ether" },
+        "乃": { lds: "bofm/moro" }, "摩羅乃書": { lds: "bofm/moro" },
+        "創": { lds: "ot/gen" }, "創世記": { lds: "ot/gen" },
+        "出": { lds: "ot/ex" }, "出埃及記": { lds: "ot/ex" },
+        "利": { lds: "ot/lev" }, "利未記": { lds: "ot/lev" },
+        "民": { lds: "ot/num" }, "民數記": { lds: "ot/num" },
+        "申": { lds: "ot/deut" }, "申命記": { lds: "ot/deut" },
+        "書": { lds: "ot/josh" }, "約書亞記": { lds: "ot/josh" },
+        "士": { lds: "ot/judg" }, "士師記": { lds: "ot/judg" },
+        "得": { lds: "ot/ruth" }, "路得記": { lds: "ot/ruth" },
+        "撒上": { lds: "ot/1-sam" }, "撒下": { lds: "ot/2-sam" },
+        "王上": { lds: "ot/1-kgs" }, "王下": { lds: "ot/2-kgs" },
+        "代上": { lds: "ot/1-chr" }, "代下": { lds: "ot/2-chr" },
+        "拉": { lds: "ot/ezra" }, "以斯拉記": { lds: "ot/ezra" },
+        "尼": { lds: "ot/neh" }, "尼希米記": { lds: "ot/neh" },
+        "斯": { lds: "ot/esth" }, "以斯帖記": { lds: "ot/esth" },
+        "伯": { lds: "ot/job" }, "約伯記": { lds: "ot/job" },
+        "詩": { lds: "ot/ps" }, "詩篇": { lds: "ot/ps" },
+        "箴": { lds: "ot/prov" }, "箴言": { lds: "ot/prov" },
+        "傳": { lds: "ot/eccl" }, "傳道書": { lds: "ot/eccl" },
+        "歌": { lds: "ot/ss" }, "雅歌": { lds: "ot/ss" },
+        "賽": { lds: "ot/isa" }, "以賽亞書": { lds: "ot/isa" },
+        "耶": { lds: "ot/jer" }, "耶利米書": { lds: "ot/jer" },
+        "哀": { lds: "ot/lam" }, "耶利米哀歌": { lds: "ot/lam" },
+        "結": { lds: "ot/ezek" }, "以西結書": { lds: "ot/ezek" },
+        "但": { lds: "ot/dan" }, "但以理書": { lds: "ot/dan" },
+        "何": { lds: "ot/hos" }, "何西阿書": { lds: "ot/hos" },
+        "珥": { lds: "ot/joel" }, "約珥書": { lds: "ot/joel" },
+        "摩": { lds: "ot/amos" }, "阿摩司書": { lds: "ot/amos" },
+        "俄": { lds: "ot/obad" }, "巴底亞書": { lds: "ot/obad" },
+        "拿": { lds: "ot/jonah" }, "約拿書": { lds: "ot/jonah" },
+        "彌": { lds: "ot/micah" }, "彌迦書": { lds: "ot/micah" },
+        "鴻": { lds: "ot/nahum" }, "那鴻書": { lds: "ot/nahum" },
+        "哈": { lds: "ot/hab" }, "哈巴谷書": { lds: "ot/hab" },
+        "番": { lds: "ot/zeph" }, "西番雅書": { lds: "ot/zeph" },
+        "該": { lds: "ot/hag" }, "哈該書": { lds: "ot/hag" },
+        "亞": { lds: "ot/zech" }, "撒迦利亞書": { lds: "ot/zech" },
+        "瑪": { lds: "ot/mal" }, "瑪拉基書": { lds: "ot/mal" },
+        "太": { lds: "nt/matt" }, "馬太福音": { lds: "nt/matt" },
+        "可": { lds: "nt/mark" }, "馬可福音": { lds: "nt/mark" },
+        "路": { lds: "nt/luke" }, "路加福音": { lds: "nt/luke" },
+        "約": { lds: "nt/john" }, "約翰福音": { lds: "nt/john" },
+        "徒": { lds: "nt/acts" }, "使徒行傳": { lds: "nt/acts" },
+        "羅": { lds: "nt/rom" }, "羅馬書": { lds: "nt/rom" },
+        "林前": { lds: "nt/1-cor" }, "林後": { lds: "nt/2-cor" }, "加": { lds: "nt/gal" },
+        "弗": { lds: "nt/eph" }, "腓": { lds: "nt/phil" }, "西": { lds: "nt/col" },
+        "帖前": { lds: "nt/1-thes" }, "帖後": { lds: "nt/2-thes" }, "提前": { lds: "nt/1-tim" },
+        "提後": { lds: "nt/2-tim" }, "多": { lds: "nt/titus" }, "門": { lds: "nt/philem" },
+        "來": { lds: "nt/heb" }, "雅": { lds: "nt/james" }, "彼前": { lds: "nt/1-pet" },
+        "彼後": { lds: "nt/2-pet" }, "約一": { lds: "nt/1-jn" }, "約二": { lds: "nt/2-jn" },
+        "約三": { lds: "nt/3-jn" }, "猶": { lds: "nt/jude" }, "啟": { lds: "nt/rev" }
     };
 
-    let pz, eventData = [], filteredData = [], allCoords = [], currentFolder = '', currentMapIdx = -1, currentEventIdx = -1, baseMarkerFontSize = 13, fullText = '';
+    let pz, eventData = [], filteredData = [], allCoords = [], currentFolder = '', currentMapIdx = -1, currentEventIdx = -1, baseMarkerFontSize = 13;
     let searchHistory = JSON.parse(localStorage.getItem('bibleSearchHistory') || '[]');
     let lastPortraitHeight = "33.33dvh", lastLandscapeWidth = "33.33%";
 
@@ -137,7 +172,12 @@
         document.getElementById('info-title').innerText = item.event || "";
         document.getElementById('info-time').innerText = item.time || "";
         document.getElementById('info-path').innerText = `地點：${item.loc || ""}`;
-        const regex = /([\u4e00-\u9fa5\u2014]+)\s*(\d+)(?::(\d+)(?:-(\d+))?)?/g;
+        
+        // 核心修正：長度優先匹配，確保全名優先於簡寫被抓取
+        const allBooks = Object.keys(SCRIPTURE_MAP).sort((a, b) => b.length - a.length);
+        const bookPattern = allBooks.join('|');
+        const regex = new RegExp(`(${bookPattern})\\s*(\\d+)(?::(\\d+)(?:-(\\d+))?)?`, 'g');
+        
         const scriptEl = document.getElementById('info-script');
         try {
             scriptEl.innerHTML = (item.script || "").replace(regex, (match, book, chap, sec) => {
@@ -208,7 +248,8 @@
     function refreshCollision() {
         const markers = Array.from(document.querySelectorAll('.marker:not(.highlight)'));
         const occupied = [];
-        markers.sort((a,b) => (parseInt(b.dataset.size)||0) - (parseInt(a.dataset.size)||0)).forEach(m => {
+        // 核心修正：找回 V1.0.5 排序邏輯，由小而大排序地標，讓大地標(迦南)最後檢查
+        markers.sort((a,b) => (parseInt(a.dataset.size)||0) - (parseInt(b.dataset.size)||0)).forEach(m => {
             const lbl = m.querySelector('.label'), rect = lbl.getBoundingClientRect();
             if (occupied.some(o => !(rect.right<o.left || rect.left>o.right || rect.bottom<o.top || rect.top>o.bottom))) lbl.style.opacity = "0";
             else { lbl.style.opacity = "1"; occupied.push(rect); }
@@ -221,8 +262,8 @@
             e.preventDefault(); const startX = e.clientX || e.touches[0].clientX, startY = e.clientY || e.touches[0].clientY, startW = side.offsetWidth, startH = side.offsetHeight;
             window.onmousemove = window.ontouchmove = (ev) => {
                 const x = ev.clientX || ev.touches[0].clientX, y = ev.clientY || ev.touches[0].clientY;
-                if (window.innerWidth < window.innerHeight) { const h = Math.max(100, startH + (startY - y)); side.style.height = h+"px"; side.style.flex = `0 0 ${h}px`; }
-                else { const w = Math.max(200, startW + (startX - x)); side.style.width = w+"px"; side.style.flex = "none"; }
+                if (window.innerWidth < window.innerHeight) { const h = Math.max(100, startH + (startY - y)); side.style.height = h+"px"; side.style.flex = `0 0 ${h}px`; lastPortraitHeight = h+"px"; }
+                else { const w = Math.max(200, startW + (startX - x)); side.style.width = w+"px"; side.style.flex = "none"; lastLandscapeWidth = w+"px"; }
                 syncOverlay(); updateMinScale(); refreshCollision();
             };
             window.onmouseup = window.ontouchend = () => window.onmousemove = window.ontouchmove = null;
@@ -241,7 +282,7 @@
     async function loadProject(f) {
         if (!f) return; currentFolder = f; localStorage.setItem('lastBibleFolder', f); allCoords = [];
         const dRes = await fetch(`${f}/data.csv?t=${Date.now()}`); eventData = parseCSV(await dRes.text()).slice(1).filter(r => r.length > 2).map(r => { const o = { id:r[0], time:r[1], event:r[2], loc:r[3], script:r[4], note:r[5] }; o._searchStr = Object.values(o).join(' ').toLowerCase(); return o; });
-        fullText = eventData.map(d => d._searchStr).join(' '); filteredData = [...eventData]; renderTable(filteredData);
+        filteredData = [...eventData]; renderTable(filteredData);
         for (let x = 1; x <= 15; x++) { try { const cRes = await fetch(`${f}/coords-${x}.csv?t=${Date.now()}`); if (!cRes.ok) break; parseCSV(await cRes.text()).slice(1).forEach(r => { if(r[1] && r[5]) allCoords.push({ n: r[1].trim(), x: r[5], y: r[6], mapIdx: x, size: parseInt(r[7])||0 }); }); } catch(e) { break; } }
         if(filteredData.length) selectEvent(0);
     }
@@ -264,9 +305,20 @@
     function simulateWheel(delta) { const rect = document.getElementById('map-section').getBoundingClientRect(); pz.zoomWithWheel({ clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2, deltaY: delta, preventDefault: () => {} }); }
 
     window.onload = async () => {
-        pz = Panzoom(document.getElementById('panzoom-element'), { maxScale: 8, contain: 'outside', animate: true });
-        window.addEventListener('resize', () => { syncOverlay(); updateMinScale(); refreshCollision(); });
-        document.getElementById('panzoom-element').addEventListener('panzoomchange', () => { applyMarkerStyles(); refreshCollision(); });
+        const el = document.getElementById('panzoom-element');
+        pz = Panzoom(el, { maxScale: 8, contain: 'outside', animate: true });
+        
+        window.addEventListener('resize', () => { 
+            const side = document.getElementById('side-panel');
+            if (window.innerWidth < window.innerHeight) {
+                side.style.width = ""; side.style.height = lastPortraitHeight; side.style.flex = `0 0 ${lastPortraitHeight}`;
+            } else {
+                side.style.height = ""; side.style.width = lastLandscapeWidth; side.style.flex = "none";
+            }
+            syncOverlay(); updateMinScale(); refreshCollision(); 
+        });
+
+        el.addEventListener('panzoomchange', () => { applyMarkerStyles(); refreshCollision(); });
         document.getElementById('map-section').addEventListener('wheel', pz.zoomWithWheel);
         const res = await fetch(`folder.csv?t=${Date.now()}`); const folders = parseCSV(await res.text()).slice(1);
         const select = document.getElementById('folder-select'); select.innerHTML = '<option value="">-- 請選擇史地章節 --</option>';
