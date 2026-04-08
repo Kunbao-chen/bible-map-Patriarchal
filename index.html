@@ -28,6 +28,7 @@
         .marker.highlight .label { opacity: 1 !important; animation: labelBreathe 0.8s infinite alternate ease-in-out; background: #fffde7 !important; border: 2px solid #d32f2f !important; color: #d32f2f !important; pointer-events: auto !important; }
         @keyframes labelBreathe { from { transform: translateY(0) scale(1); } to { transform: translateY(-6px) scale(1.05); } }
 
+        /* 搜尋欄 */
         .search-container { position: absolute; right: 12px; top: 12px; z-index: 2000; display: flex; flex-direction: column; align-items: flex-end; }
         .search-bar-wrapper { display: flex; align-items: center; background: rgba(255,255,255,0.4); backdrop-filter: blur(8px); border-radius: 10px; border: 2px solid var(--brown); padding: 2px; }
         .search-clear { cursor: pointer; display: none; padding: 0 8px; color: var(--brown); font-weight: bold; font-size: 18px; order: -1; }
@@ -37,6 +38,7 @@
         #search-history { display: none; width: 200px; background: white; border: 1px solid #ccc; border-radius: 8px; margin-top: 5px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); overflow-y: auto; max-height: 30dvh; }
         .history-item { padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; cursor: pointer; font-size: 13px; }
 
+        /* 分隔線與側欄 */
         #resizer-main { background: var(--handle-bg); z-index: 1100; display: flex; align-items: center; justify-content: center; touch-action: none; }
         @media (min-width: 801px), (orientation: landscape) { #resizer-main { width: 12px; cursor: col-resize; height: 100%; } #resizer-main::after { content: "⋮"; } }
         @media (max-width: 800px) and (orientation: portrait) { #resizer-main { height: 16px; cursor: row-resize; width: 100%; } #resizer-main::after { content: "⋯"; } }
@@ -44,19 +46,18 @@
         #side-panel { background: white; display: flex; flex-direction: column; overflow: hidden; position: relative; flex: 0 0 33.33%; flex-shrink: 0; }
         #info-area { display: none; flex-direction: column; background: #fff; flex: 0 0 45%; min-height: 44px; overflow: hidden; }
         #info-header { background: var(--dark); color: white; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; height: 44px; z-index: 5; }
-        #info-body { padding: 15px; overflow-y: auto; flex: 1; font-size: var(--base-fs); line-height: 1.5; }
+        #info-body { padding: 15px; overflow-y: auto; flex: 1; font-size: 14px !important; line-height: 1.5 !important; }
         #resizer-inner { height: 12px; background: #eee; cursor: row-resize; display: flex; align-items: center; justify-content: center; touch-action: none; flex-shrink: 0; border-top: 1px solid #ddd; z-index: 10; }
         #list-container { flex: 1; overflow-y: auto; }
-        #list-container table { font-size: var(--base-fs); width: 100%; border-collapse: collapse; }
+        #list-container table { font-size: 14px !important; width: 100%; border-collapse: collapse; line-height: 1.5 !important; }
         tr.active-row td { background: #fffde7; font-weight: bold; border-left: 5px solid var(--gold); }
 
-        /* 手術刀修正：確保齒輪選單視覺完整 */
+        /* 精確修復：齒輪樣式 */
         .fab-container { position: absolute; left: 12px; top: 12px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; }
-        .fab-main { width: 42px; height: 42px; background: rgba(255,255,255,0.7); backdrop-filter: blur(8px); border: 2px solid var(--brown); border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-        .fab-menu { display: none; flex-direction: column; gap: 6px; background: rgba(255,255,255,0.3); padding: 4px; border-radius: 10px; }
-        .fab-menu button { width:34px; height:34px; border-radius:10px; border: 2px solid var(--brown); background: rgba(255,255,255,0.9); cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+        .fab-main { width: 42px; height: 42px; background: rgba(255,255,255,0.6); backdrop-filter: blur(8px); border: 2px solid var(--brown); border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .fab-menu button { width:34px; height:34px; border-radius:10px; border: 2px solid var(--brown); background: rgba(255,255,255,0.8); cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--brown); }
 
-        /* 經文跳窗樣式 */
+        /* 經文跳窗 */
         #scripture-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 3000; background: rgba(0,0,0,0.5); }
         .modal-content { position: absolute; top: 5%; left: 5%; width: 90%; height: 90%; background: white; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
         .modal-header { background: var(--dark); color: white; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; }
@@ -79,8 +80,8 @@
         </div>
         
         <div class="fab-container">
-            <button class="fab-main" onclick="toggleFab()"><svg viewBox="0 0 24 24" width="22" fill="#5d4037"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg></button>
-            <div id="fab-menu" class="fab-menu">
+            <button class="fab-main" onclick="toggleFab()"><svg viewBox="0 0 24 24" width="22" fill="#5d4037"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38(1.03.7 1.62.94l.36-2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg></button>
+            <div id="fab-menu" style="display:none; flex-direction:column; gap:6px;">
                 <button onclick="simulateWheel(-1)">+</button>
                 <button onclick="simulateWheel(1)">-</button>
                 <button onclick="resetView()">↺</button>
@@ -125,24 +126,13 @@
 </div>
 
 <script>
-    // 經文連結對照表
     const SCRIPTURE_PHYSICAL_MAP = { "創": "ot/gen", "出": "ot/ex", "利": "ot/lev", "民": "ot/num", "申": "ot/deut", "書": "ot/josh", "士": "ot/judg", "得": "ot/ruth", "撒上": "ot/1-sam", "撒下": "ot/2-sam", "王上": "ot/1-kgs", "王下": "ot/2-kgs", "代上": "ot/1-chr", "代下": "ot/2-chr", "拉": "ot/ezra", "尼": "ot/neh", "斯": "ot/esth", "伯": "ot/job", "詩": "ot/ps", "箴": "ot/prov", "傳": "ot/eccl", "歌": "ot/ss", "賽": "ot/isa", "耶": "ot/jer", "哀": "ot/lam", "結": "ot/ezek", "但": "ot/dan", "何": "ot/hos", "珥": "ot/joel", "摩": "ot/amos", "俄": "ot/obad", "拿": "ot/jonah", "彌": "ot/micah", "鴻": "ot/nahum", "哈": "ot/hab", "番": "ot/zeph", "該": "ot/hag", "亞": "ot/zech", "瑪": "ot/mal", "太": "nt/matt", "可": "nt/mark", "路": "nt/luke", "約": "nt/john", "徒": "nt/acts", "羅": "nt/rom", "林前": "nt/1-cor", "林後": "nt/2-cor", "加": "nt/gal", "弗": "nt/eph", "腓": "nt/phil", "西": "nt/col", "帖前": "nt/1-thes", "帖後": "nt/2-thes", "提前": "nt/1-tim", "提後": "nt/2-tim", "多": "nt/titus", "門": "nt/philem", "來": "nt/heb", "雅": "nt/james", "彼前": "nt/1-pet", "彼後": "nt/2-pet", "約一": "nt/1-jn", "約二": "nt/2-jn", "約三": "nt/3-jn", "猶": "nt/jude", "啟": "nt/rev" };
-
-    function openScripture(bookKey, chap, sec, endSec) { 
-        const path = SCRIPTURE_PHYSICAL_MAP[bookKey]; 
-        if (!path) return; 
-        let url = `https://www.churchofjesuschrist.org/study/scriptures/${path}/${chap}?lang=zho`; 
-        if (sec) url += `&id=${endSec ? 'p'+sec+'-p'+endSec : 'p'+sec}#p${sec}`; 
-        document.getElementById('scripture-frame').src = url; 
-        document.getElementById('scripture-modal').style.display = 'block'; 
-        document.getElementById('modal-title').innerText = `${bookKey} 第 ${chap} 章`; 
-    }
+    function openScripture(bookKey, chap, sec, endSec) { const path = SCRIPTURE_PHYSICAL_MAP[bookKey]; if (!path) return; let url = `https://www.churchofjesuschrist.org/study/scriptures/${path}/${chap}?lang=zho`; if (sec) url += `&id=${endSec ? 'p'+sec+'-p'+endSec : 'p'+sec}#p${sec}`; document.getElementById('scripture-frame').src = url; document.getElementById('scripture-modal').style.display = 'block'; document.getElementById('modal-title').innerText = `${bookKey} 第 ${chap} 章`; }
     function closeScripture() { document.getElementById('scripture-modal').style.display = 'none'; document.getElementById('scripture-frame').src = ''; }
 
     let pz, eventData = [], filteredData = [], allCoords = [], currentFolder = '', currentMapIdx = -1, currentEventIdx = -1, baseMarkerFontSize = 13, fullText = '';
     let searchHistory = JSON.parse(localStorage.getItem('bibleSearchHistory') || '[]');
-    let lastPortraitHeight = "33.33dvh"; 
-    let lastLandscapeWidth = "33.33%";
+    let lastPortraitHeight = "33.33dvh", lastLandscapeWidth = "33.33%";
 
     function toggleSearch() { const input = document.getElementById('search-input'); const isOpening = !input.classList.contains('open'); input.classList.toggle('open'); if (isOpening) { input.focus(); } else { hideHistory(); } }
     function handleSearch(keyword) { const input = document.getElementById('search-input'); const term = (keyword !== undefined ? keyword : input.value).trim().toLowerCase(); const clearBtn = document.getElementById('search-clear'); clearBtn.style.display = term ? 'block' : 'none'; if (!term) { filteredData = [...eventData]; } else { const safeTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); const regex = new RegExp(safeTerm, 'gi'); filteredData = eventData.map(item => { const match = item._searchStr.match(regex); return { ...item, score: match ? match.length : 0 }; }).filter(item => item.score > 0).sort((a, b) => parseInt(a.id) - parseInt(b.id)); } renderTable(filteredData); if (term && keyword === undefined) saveHistory(term); if (term && filteredData.length > 0) { selectEvent(0); document.getElementById('list-container').scrollTop = 0; } }
@@ -222,7 +212,7 @@
         const sortedBooks = Object.keys(SCRIPTURE_PHYSICAL_MAP).sort((a, b) => b.length - a.length).join('|');
         const regex = new RegExp(`(${sortedBooks})[^\\s\\d]*\\s*(\\d+)(?::(\\d+)(?:-(\\d+))?)?`, 'g');
         scriptEl.innerHTML = scriptRaw.replace(regex, (m, b, c, s, e) => `<span class="script-link" onclick="openScripture('${b}', ${c}, '${s||""}', '${e||""}')">${m}</span>`);
-        document.getElementById('info-note').innerHTML = `<div>${item.note || ""}</div>` + (item.ldsLink ? `<div style="margin-top:10px; padding-top:10px; border-top:1.5px dashed #ccc; color:var(--brown);"><strong>正典關聯：</strong><br>${item.ldsLink}</div>` : "");
+        document.getElementById('info-note').innerHTML = `<div>${item.note || ""}</div>`;
     }
 
     function toggleInfo() { const body = document.getElementById('info-body'), arrow = document.getElementById('info-arrow'), area = document.getElementById('info-area'); if (body.style.display === 'none') { body.style.display = 'block'; area.style.flex = "0 0 45%"; arrow.innerText = '▼'; } else { body.style.display = 'none'; area.style.flex = "0 0 44px"; arrow.innerText = '▲'; } }
@@ -232,7 +222,7 @@
         if (!folder) return; currentFolder = folder; localStorage.setItem('lastBibleFolder', folder); allCoords = [];
         const dRes = await fetch(`${folder}/data.csv?t=${Date.now()}`); 
         eventData = parseCSV(await dRes.text()).slice(1).filter(r => r.length > 2).map(r => { 
-            const obj = { id:r[0], time:r[1], event:r[2], loc:r[3], script:r[4], note:r[5], ldsLink: r[6] || "" }; 
+            const obj = { id:r[0], time:r[1], event:r[2], loc:r[3], script:r[4], note:r[5] }; 
             obj._searchStr = Object.values(obj).join(' ').toLowerCase(); return obj; 
         });
         fullText = eventData.map(d => d._searchStr).join(' '); filteredData = [...eventData]; renderTable(filteredData);
@@ -244,12 +234,12 @@
     function parseLocationLogic(locStr, db) { const result = { paths: [], points: [] }; locStr.split('+').map(b => b.trim()).forEach(block => { if (block.includes('→')) { const chain = block.split('→').map(p => findBestMatch(p.replace(/\(.*?\)/g, '').trim(), db)).filter(p => p); if (chain.length > 1) result.paths.push(chain); chain.forEach(p => result.points.push(p)); } else { const pt = findBestMatch(block.replace(/\(.*?\)/g, '').trim(), db); if (pt) result.points.push(pt); } }); return result; }
 
     function applyMarkerStyles() { const s = pz ? pz.getScale() : 1; const anti = s > 0 ? 1 / s : 1; document.querySelectorAll('.marker').forEach(m => { const gain = parseInt(m.dataset.size)||0, label = m.querySelector('.label'); label.style.fontSize = (baseMarkerFontSize + (gain * 1.5)) + 'px'; m.style.transform = `translate(-50%, -50%) scale(${anti})`; }); }
-    function adjustFontSize(delta) { baseMarkerFontSize = Math.max(8, Math.min(30, baseMarkerFontSize + delta)); document.documentElement.style.setProperty('--base-fs', baseMarkerFontSize + 'px'); applyMarkerStyles(); refreshCollision(); }
+    function adjustFontSize(delta) { baseMarkerFontSize = Math.max(8, Math.min(30, baseMarkerFontSize + delta)); applyMarkerStyles(); refreshCollision(); }
 
     function flyTo(pts) { if (!pts.length) return; const img = document.getElementById('bg-map'), container = document.getElementById('map-section'); if (!img.offsetWidth) return; const containerRect = container.getBoundingClientRect(), imgRect = img.getBoundingClientRect(), sc = pz.getScale(), currentPan = pz.getPan(); let avgPctX = 0, avgPctY = 0; pts.forEach(p => { avgPctX += parseFloat(p.x); avgPctY += parseFloat(p.y); }); avgPctX /= pts.length; avgPctY /= pts.length; const currentMarkerX = (imgRect.left - containerRect.left) + (imgRect.width * (avgPctX / 100)), currentMarkerY = (imgRect.top - containerRect.top) + (imgRect.height * (avgPctY / 100)); pz.pan(currentPan.x + (((containerRect.width/2)-currentMarkerX)/sc), currentPan.y + (((containerRect.height/2)-currentMarkerY)/sc), { animate: true, duration: 500 }); }
     function updateMinScale() { const img = document.getElementById('bg-map'), c = document.getElementById('map-section'); if (!img.offsetWidth) return; const min = Math.max(c.clientWidth / img.offsetWidth, c.clientHeight / img.offsetHeight); pz.setOptions({ minScale: min }); if (pz.getScale() < min) pz.zoom(min, { animate: false }); const cur = pz.getPan(); pz.pan(cur.x, cur.y, { force: true }); }
     function syncOverlay() { const img = document.getElementById('bg-map'), ov = document.getElementById('overlay-container'); ov.style.width = img.offsetWidth + 'px'; ov.style.height = img.offsetHeight + 'px'; }
-    function toggleFab() { const m = document.getElementById('fab-menu'); m.style.display = (m.style.display === 'none' || m.style.display === '') ? 'flex' : 'none'; }
+    function toggleFab() { const m = document.getElementById('fab-menu'); m.style.display = m.style.display === 'none' ? 'flex' : 'none'; }
     function resetView() { pz.reset(); applyMarkerStyles(); refreshCollision(); }
     function simulateWheel(delta) { const rect = document.getElementById('map-section').getBoundingClientRect(); pz.zoomWithWheel({ clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2, deltaY: delta, preventDefault: () => {} }); }
 
@@ -262,14 +252,10 @@
         });
         el.addEventListener('panzoomchange', () => { applyMarkerStyles(); refreshCollision(); });
         document.getElementById('map-section').addEventListener('wheel', pz.zoomWithWheel);
-        try {
-            const res = await fetch(`folder.csv?t=${Date.now()}`); 
-            const folders = parseCSV(await res.text()).slice(1);
-            const select = document.getElementById('folder-select'); 
-            select.innerHTML = '<option value="">-- 請選擇史地章節 --</option>';
-            folders.forEach(f => { if(f[0]) { const opt = document.createElement('option'); opt.value = f[0]; opt.innerText = f[1] || f[0]; select.appendChild(opt); } });
-            const last = localStorage.getItem('lastBibleFolder'); if (last) { select.value = last; loadProject(last); }
-        } catch(e) { console.error("無法載入目錄檔案", e); }
+        const res = await fetch(`folder.csv?t=${Date.now()}`); const folders = parseCSV(await res.text()).slice(1);
+        const select = document.getElementById('folder-select'); select.innerHTML = '<option value="">-- 請選擇史地章節 --</option>';
+        folders.forEach(f => { if(f[0]) { const opt = document.createElement('option'); opt.value = f[0]; opt.innerText = f[1] || f[0]; select.appendChild(opt); } });
+        const last = localStorage.getItem('lastBibleFolder'); if (last) { select.value = last; loadProject(last); }
         initResizers();
     };
 </script>
