@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>聖經史地互動地圖 V1.0.8</title>
+    <title>聖經史地互動地圖 V1.0.5</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -12,11 +12,12 @@
         body { margin: 0; padding: 0; width: 100vw; height: 100dvh; overflow: hidden; background: #fdf6e3; font-family: "微軟正黑體", "Heiti TC", "Apple LiGothic Medium", sans-serif; }
         #app-container { display: flex; width: 100%; height: 100%; flex-direction: row; }
 
-        /* V1.0.5 核心布局邏輯 */
+        /* 手機直立模式：手術刀修正 - 移除鎖死 !important，允許 JS 動態調整 */
         @media (max-width: 800px) and (orientation: portrait) {
             #app-container { flex-direction: column; }
             #side-panel { width: 100%; height: 33.33dvh; flex: none; }
         }
+
         #map-section { flex: 1; position: relative; overflow: hidden; background: #e5d3b3; }
         #panzoom-element { display: inline-block; position: relative; }
         #bg-map { display: block; max-width: none; user-select: none; }
@@ -24,10 +25,12 @@
         .marker { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; z-index: 10; cursor: pointer; }
         .marker .dot { width: 5px; height: 5px; background: rgba(93,64,55,0.5); border-radius: 50%; z-index: 1; }
         .marker .label { margin-top: -12.5px; opacity: 0; padding: 2px 6px; border-radius: 8px; background: rgba(255,255,255,0.9); border: 1.5px solid var(--brown); white-space: nowrap; font-weight: bold; font-size: 13px; color: var(--brown); transition: opacity 0.4s ease-in-out, transform 0.2s ease; pointer-events: none; z-index: 2; }
+        
         .marker.region-type .label { background: none !important; border: none !important; font-family: 'ZCOOL KuaiLe', cursive; color: var(--ink-blue); text-shadow: 0 0 5px #fdf6e3, 0 0 2px #fdf6e3; }
         
         .marker.highlight { z-index: 1000 !important; }
         .marker.highlight .label { opacity: 1 !important; animation: labelBreathe 0.8s infinite alternate ease-in-out; background: #fffde7 !important; border: 2px solid #d32f2f !important; color: #d32f2f !important; pointer-events: auto !important; }
+
         @keyframes labelBreathe { from { transform: translateY(0) scale(1); } to { transform: translateY(-6px) scale(1.05); } }
 
         .search-container { position: absolute; right: 12px; top: 12px; z-index: 2000; display: flex; flex-direction: column; align-items: flex-end; }
@@ -36,8 +39,6 @@
         #search-input { width: 0; opacity: 0; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); border: none; background: transparent; height: 32px; outline: none; font-size: 14px; }
         #search-input.open { width: 160px; opacity: 1; padding: 0 8px; }
         .search-btn { width: 34px; height: 34px; cursor: pointer; display: flex; align-items: center; justify-content: center; background: transparent; border: none; }
-        #search-history { display: none; width: 200px; background: white; border: 1px solid #ccc; border-radius: 8px; margin-top: 5px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); overflow-y: auto; max-height: 30dvh; }
-        .history-item { padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; cursor: pointer; font-size: 13px; }
 
         #resizer-main { background: var(--handle-bg); z-index: 1100; display: flex; align-items: center; justify-content: center; touch-action: none; }
         @media (min-width: 801px), (orientation: landscape) { #resizer-main { width: 12px; cursor: col-resize; height: 100%; } #resizer-main::after { content: "⋮"; } }
@@ -54,7 +55,7 @@
 
         .fab-container { position: absolute; left: 12px; top: 12px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; }
         .fab-main { width: 42px; height: 42px; background: rgba(255,255,255,0.4); backdrop-filter: blur(8px); border: 2px solid var(--brown); border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-        .fab-menu button { width:34px; height:34px; border-radius:10px; border: 2px solid var(--brown); background: rgba(255,255,255,0.8); cursor: pointer; }
+        .fab-menu button { width: 34px; height: 34px; border-radius: 10px; border: 2px solid var(--brown); background: rgba(255,255,255,0.8); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; color: var(--brown); }
         .script-link { color: #2980b9; cursor: pointer; text-decoration: underline; font-weight: bold; }
     </style>
 </head>
@@ -64,10 +65,9 @@
         <div class="search-container">
             <div class="search-bar-wrapper">
                 <div id="search-clear" class="search-clear" onclick="clearSearch()">×</div>
-                <input type="text" id="search-input" placeholder="搜尋..." oninput="handleSearch()" onfocus="showHistory()" onblur="hideHistory()">
+                <input type="text" id="search-input" placeholder="搜尋..." oninput="handleSearch()">
                 <button class="search-btn" onclick="toggleSearch()"><svg viewBox="0 0 24 24" width="20" fill="#5d4037"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg></button>
             </div>
-            <div id="search-history"></div>
         </div>
         <div class="fab-container">
             <button class="fab-main" onclick="toggleFab()"><svg viewBox="0 0 24 24" width="22" fill="#5d4037"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg></button>
@@ -104,77 +104,28 @@
         <div id="list-container"><table><tbody id="table-body"></tbody></table></div>
     </div>
 </div>
+
 <script>
-    // V1.0.8: 基於 V1.0.5 完整還原，僅疊加經文全名兼容功能
+    // V1.0.5 核心定義
     const SCRIPTURE_MAP = {
-        "罕": { lds: "pgp/abr" }, "亞伯拉罕書": { lds: "pgp/abr" },
-        "摩西": { lds: "pgp/moses" }, "摩西書": { lds: "pgp/moses" },
-        "約太": { lds: "pgp/js-m" }, "約史": { lds: "pgp/js-h" }, "信": { lds: "pgp/a-of-f" },
-        "腓一": { lds: "bofm/1-ne" }, "腓二": { lds: "bofm/2-ne" },
-        "各": { lds: "bofm/jacob" }, "雅各書": { lds: "bofm/jacob" },
-        "挪": { lds: "bofm/enos" }, "以挪士書": { lds: "bofm/enos" },
-        "龍": { lds: "bofm/jarom" }, "傑隆書": { lds: "bofm/jarom" },
-        "奧": { lds: "bofm/omni" }, "奧姆乃書": { lds: "bofm/omni" },
-        "語": { lds: "bofm/w-of-m" }, "摩門語": { lds: "bofm/w-of-m" },
-        "摩賽": { lds: "bofm/mosiah" }, "摩賽亞書": { lds: "bofm/mosiah" },
-        "阿": { lds: "bofm/alma" }, "阿爾瑪書": { lds: "bofm/alma" },
-        "曼": { lds: "bofm/hel" }, "希拉曼書": { lds: "bofm/hel" },
-        "腓三": { lds: "bofm/3-ne" }, "腓四": { lds: "bofm/4-ne" },
-        "摩爾門": { lds: "bofm/morm" }, "以": { lds: "bofm/ether" }, "以帖書": { lds: "bofm/ether" },
-        "乃": { lds: "bofm/moro" }, "摩羅乃書": { lds: "bofm/moro" },
-        "創": { lds: "ot/gen" }, "創世記": { lds: "ot/gen" },
-        "出": { lds: "ot/ex" }, "出埃及記": { lds: "ot/ex" },
-        "利": { lds: "ot/lev" }, "利未記": { lds: "ot/lev" },
-        "民": { lds: "ot/num" }, "民數記": { lds: "ot/num" },
-        "申": { lds: "ot/deut" }, "申命記": { lds: "ot/deut" },
-        "書": { lds: "ot/josh" }, "約書亞記": { lds: "ot/josh" },
-        "士": { lds: "ot/judg" }, "士師記": { lds: "ot/judg" },
-        "得": { lds: "ot/ruth" }, "路得記": { lds: "ot/ruth" },
-        "撒上": { lds: "ot/1-sam" }, "撒下": { lds: "ot/2-sam" },
-        "王上": { lds: "ot/1-kgs" }, "王下": { lds: "ot/2-kgs" },
-        "代上": { lds: "ot/1-chr" }, "代下": { lds: "ot/2-chr" },
-        "拉": { lds: "ot/ezra" }, "以斯拉記": { lds: "ot/ezra" },
-        "尼": { lds: "ot/neh" }, "尼希米記": { lds: "ot/neh" },
-        "斯": { lds: "ot/esth" }, "以斯帖記": { lds: "ot/esth" },
-        "伯": { lds: "ot/job" }, "約伯記": { lds: "ot/job" },
-        "詩": { lds: "ot/ps" }, "詩篇": { lds: "ot/ps" },
-        "箴": { lds: "ot/prov" }, "箴言": { lds: "ot/prov" },
-        "傳": { lds: "ot/eccl" }, "傳道書": { lds: "ot/eccl" },
-        "歌": { lds: "ot/ss" }, "雅歌": { lds: "ot/ss" },
-        "賽": { lds: "ot/isa" }, "以賽亞書": { lds: "ot/isa" },
-        "耶": { lds: "ot/jer" }, "耶利米書": { lds: "ot/jer" },
-        "哀": { lds: "ot/lam" }, "耶利米哀歌": { lds: "ot/lam" },
-        "結": { lds: "ot/ezek" }, "以西結書": { lds: "ot/結" },
-        "但": { lds: "ot/dan" }, "但以理書": { lds: "ot/dan" },
-        "何": { lds: "ot/hos" }, "何西阿書": { lds: "ot/hos" },
-        "珥": { lds: "ot/joel" }, "約珥書": { lds: "ot/joel" },
-        "摩": { lds: "ot/amos" }, "阿摩司書": { lds: "ot/amos" },
-        "俄": { lds: "ot/obad" }, "巴底亞書": { lds: "ot/obad" },
-        "拿": { lds: "ot/jonah" }, "約拿書": { lds: "ot/jonah" },
-        "彌": { lds: "ot/micah" }, "彌迦書": { lds: "ot/micah" },
-        "鴻": { lds: "ot/nahum" }, "那鴻書": { lds: "ot/nahum" },
-        "哈": { lds: "ot/hab" }, "哈巴谷書": { lds: "ot/hab" },
-        "番": { lds: "ot/zeph" }, "西番雅書": { lds: "ot/zeph" },
-        "該": { lds: "ot/hag" }, "哈該書": { lds: "ot/hag" },
-        "亞": { lds: "ot/zech" }, "撒迦利亞書": { lds: "ot/zech" },
-        "瑪": { lds: "ot/mal" }, "瑪拉基書": { lds: "ot/mal" },
-        "太": { lds: "nt/matt" }, "馬太福音": { lds: "nt/matt" },
-        "可": { lds: "nt/mark" }, "馬可福音": { lds: "nt/mark" },
-        "路": { lds: "nt/luke" }, "路加福音": { lds: "nt/luke" },
-        "約": { lds: "nt/john" }, "約翰福音": { lds: "nt/john" },
-        "徒": { lds: "nt/acts" }, "使徒行傳": { lds: "nt/acts" },
-        "羅": { lds: "nt/rom" }, "羅馬書": { lds: "nt/rom" },
-        "林前": { lds: "nt/1-cor" }, "林後": { lds: "nt/2-cor" }, "加": { lds: "nt/gal" },
-        "弗": { lds: "nt/eph" }, "腓": { lds: "nt/phil" }, "西": { lds: "nt/col" },
-        "帖前": { lds: "nt/1-thes" }, "帖後": { lds: "nt/2-thes" }, "提前": { lds: "nt/1-tim" },
-        "提後": { lds: "nt/2-tim" }, "多": { lds: "nt/titus" }, "門": { lds: "nt/philem" },
-        "來": { lds: "nt/heb" }, "雅": { lds: "nt/james" }, "彼前": { lds: "nt/1-pet" },
-        "彼後": { lds: "nt/2-pet" }, "約一": { lds: "nt/1-jn" }, "約二": { lds: "nt/2-jn" },
-        "約三": { lds: "nt/3-jn" }, "猶": { lds: "nt/jude" }, "啟": { lds: "nt/rev" }
+        "罕": "pgp/abr", "摩西": "pgp/moses", "約太": "pgp/js-m", "約史": "pgp/js-h", "信": "pgp/a-of-f",
+        "腓一": "bofm/1-ne", "腓二": "bofm/2-ne", "各": "bofm/jacob", "挪": "bofm/enos", "龍": "bofm/jarom",
+        "奧": "bofm/omni", "語": "bofm/w-of-m", "摩賽": "bofm/mosiah", "阿": "bofm/alma", "曼": "bofm/hel",
+        "腓三": "bofm/3-ne", "腓四": "bofm/4-ne", "摩爾門": "bofm/morm", "以": "bofm/ether", "乃": "bofm/moro",
+        "創": "ot/gen", "出": "ot/ex", "利": "ot/lev", "民": "ot/num", "申": "ot/deut", "書": "ot/josh", "士": "ot/judg",
+        "得": "ot/ruth", "撒上": "ot/1-sam", "撒下": "ot/2-sam", "王上": "ot/1-kgs", "王下": "ot/2-kgs",
+        "代上": "ot/1-chr", "代下": "ot/2-chr", "拉": "ot/ezra", "尼": "ot/neh", "斯": "ot/esth", "伯": "ot/job",
+        "詩": "ot/ps", "箴": "ot/prov", "傳": "ot/eccl", "歌": "ot/ss", "賽": "ot/isa", "耶": "ot/jer", "哀": "ot/lam",
+        "結": "ot/ezek", "但": "ot/dan", "何": "ot/hos", "珥": "ot/joel", "摩": "ot/amos", "俄": "ot/obad", "拿": "ot/jonah",
+        "彌": "ot/micah", "鴻": "ot/nahum", "哈": "ot/hab", "番": "ot/zeph", "該": "ot/hag", "亞": "ot/zech", "瑪": "ot/mal",
+        "太": "nt/matt", "可": "nt/mark", "路": "nt/luke", "約": "nt/john", "徒": "nt/acts", "羅": "nt/rom",
+        "林前": "nt/1-cor", "林後": "nt/2-cor", "加": "nt/gal", "弗": "nt/eph", "腓": "nt/phil", "西": "nt/col",
+        "帖前": "nt/1-thes", "帖後": "nt/2-thes", "提前": "nt/1-tim", "提後": "nt/2-tim", "多": "nt/titus",
+        "門": "nt/philem", "來": "nt/heb", "雅": "nt/james", "彼前": "nt/1-pet", "彼後": "nt/2-pet", "約一": "nt/1-jn",
+        "約二": "nt/2-jn", "約三": "nt/3-jn", "猶": "nt/jude", "啟": "nt/rev"
     };
 
     let pz, eventData = [], filteredData = [], allCoords = [], currentFolder = '', currentMapIdx = -1, currentEventIdx = -1, baseMarkerFontSize = 13;
-    let searchHistory = JSON.parse(localStorage.getItem('bibleSearchHistory') || '[]');
     let lastPortraitHeight = "33.33dvh", lastLandscapeWidth = "33.33%";
 
     function updateInfoPanel(item) {
@@ -184,85 +135,92 @@
         document.getElementById('info-time').innerText = item.time || "";
         document.getElementById('info-path').innerText = `地點：${item.loc || ""}`;
         
-        // V1.0.8 手術刀修正：全名與簡寫兼容邏輯
-        const allBooks = Object.keys(SCRIPTURE_MAP).sort((a, b) => b.length - a.length);
-        const bookPattern = allBooks.join('|');
-        const regex = new RegExp(`(${bookPattern})\\s*(\\d+)(?::(\\d+)(?:-(\\d+))?)?`, 'g');
-        
         const scriptEl = document.getElementById('info-script');
-        try {
-            scriptEl.innerHTML = (item.script || "").replace(regex, (match, book, chap, sec) => {
-                if (SCRIPTURE_MAP[book]) {
-                    const s = sec || 1;
-                    return `<span class="script-link" onclick="openScripture('${book}', ${chap}, ${s})">${match}</span>`;
-                }
-                return match;
-            });
-        } catch(e) { scriptEl.innerText = item.script || ""; }
+        const scriptRaw = item.script || "";
+        const regex = /([^\s\d]+)\s*(\d+)(?::(\d+)(?:-(\d+))?)?/g;
+        scriptEl.innerHTML = scriptRaw.replace(regex, (match, book, chap, sec) => {
+            if (SCRIPTURE_MAP[book]) {
+                const s = sec || 1;
+                return `<span class="script-link" onclick="openScripture('${book}', ${chap}, ${s})">${match}</span>`;
+            }
+            return match;
+        });
         document.getElementById('info-note').innerText = item.note || "";
     }
 
     function openScripture(bookKey, chap, sec) {
-        const entry = SCRIPTURE_MAP[bookKey];
-        if (!entry) return;
-        const url = `https://www.churchofjesuschrist.org/study/scriptures/${entry.lds}/${chap}?lang=zho&id=p${sec}#p${sec}`;
+        const path = SCRIPTURE_MAP[bookKey];
+        const url = `https://www.churchofjesuschrist.org/study/scriptures/${path}/${chap}?lang=zho&id=p${sec}#p${sec}`;
         window.open(url, '_blank');
     }
 
     function toggleSearch() { const input = document.getElementById('search-input'); input.classList.toggle('open'); if(input.classList.contains('open')) input.focus(); }
-    function handleSearch(keyword) {
-        const term = (keyword !== undefined ? keyword : document.getElementById('search-input').value).trim().toLowerCase();
+    function handleSearch() {
+        const term = document.getElementById('search-input').value.trim().toLowerCase();
         document.getElementById('search-clear').style.display = term ? 'block' : 'none';
-        if (!term) { filteredData = [...eventData]; } 
-        else {
-            const regex = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-            filteredData = eventData.map(item => ({ ...item, score: (item._searchStr.match(regex) || []).length }))
-                                    .filter(item => item.score > 0).sort((a, b) => parseInt(a.id) - parseInt(b.id));
-        }
+        if (!term) filteredData = [...eventData];
+        else filteredData = eventData.filter(item => Object.values(item).join(' ').toLowerCase().includes(term));
         renderTable(filteredData);
-        if (term && keyword === undefined) saveHistory(term);
-        if (term && filteredData.length > 0) selectEvent(0);
     }
-    function clearSearch() { const input = document.getElementById('search-input'); input.value = ''; input.classList.remove('open'); handleSearch(""); }
-    function saveHistory(t) { searchHistory = [t, ...searchHistory.filter(h => h !== t)].slice(0, 10); localStorage.setItem('bibleSearchHistory', JSON.stringify(searchHistory)); }
-    function showHistory() { if(searchHistory.length) { const p = document.getElementById('search-history'); p.style.display = 'block'; p.innerHTML = searchHistory.map(h => `<div class="history-item" onclick="useHistory('${h}')">${h}</div>`).join(''); } }
-    function hideHistory() { setTimeout(() => document.getElementById('search-history').style.display = 'none', 200); }
-    function useHistory(h) { document.getElementById('search-input').value = h; handleSearch(h); }
+    function clearSearch() { const input = document.getElementById('search-input'); input.value = ''; handleSearch(); }
     function selectEvent(idx) { if (idx < 0 || idx >= filteredData.length) return; currentEventIdx = idx; const item = filteredData[idx]; Array.from(document.getElementById('table-body').rows).forEach((r, i) => r.className = i === idx ? 'active-row' : ''); updateMapAndInfo(item); }
     function navEvent(step) { const n = currentEventIdx + step; if (n >= 0 && n < filteredData.length) { selectEvent(n); const r = document.getElementById('table-body').rows[n]; if(r) r.scrollIntoView({block:'center'}); } }
 
     async function updateMapAndInfo(item) {
-        let targetMapIdx = 1; const names = item.loc.split(/[+→]/).map(p => p.replace(/\(.*?\)/g, '').trim());
-        for (let x = 15; x >= 1; x--) { const db = allCoords.filter(c => c.mapIdx === x); if (db.length && names.every(n => findBestMatch(n, db))) { targetMapIdx = x; break; } }
+        let targetMapIdx = 1;
+        const names = item.loc.split(/[+→]/).map(p => p.replace(/\(.*?\)/g, '').trim());
+        for (let x = 15; x >= 1; x--) {
+            const db = allCoords.filter(c => c.mapIdx === x);
+            if (db.length && names.every(n => findBestMatch(n, db))) { targetMapIdx = x; break; }
+        }
         if (currentMapIdx !== targetMapIdx) {
-            currentMapIdx = targetMapIdx; const img = document.getElementById('bg-map'); img.src = `${currentFolder}/picture-${targetMapIdx}.png`;
+            currentMapIdx = targetMapIdx;
+            const img = document.getElementById('bg-map');
+            img.src = `${currentFolder}/picture-${targetMapIdx}.png`;
             await new Promise(res => img.onload = () => { syncOverlay(); updateMinScale(); res(); });
         }
-        const mapData = allCoords.filter(c => c.mapIdx === targetMapIdx); renderVisuals(mapData, parseLocationLogic(item.loc, mapData)); updateInfoPanel(item);
+        const mapData = allCoords.filter(c => c.mapIdx === targetMapIdx);
+        renderVisuals(mapData, parseLocationLogic(item.loc, mapData));
+        updateInfoPanel(item);
     }
 
     function renderVisuals(db, logic) {
-        const ml = document.getElementById('marker-layer'), sl = document.getElementById('svg-layer'); sl.innerHTML = '';
-        logic.paths.forEach(p => { for (let i = 0; i < p.length - 1; i++) { const l = document.createElementNS('http://www.w3.org/2000/svg', 'line'); l.setAttribute('x1', p[i].x+'%'); l.setAttribute('y1', p[i].y+'%'); l.setAttribute('x2', p[i+1].x+'%'); l.setAttribute('y2', p[i+1].y+'%'); l.setAttribute('stroke', '#d32f2f'); l.setAttribute('stroke-width', '2.5'); sl.appendChild(l); } });
+        const ml = document.getElementById('marker-layer'), sl = document.getElementById('svg-layer');
+        sl.innerHTML = '';
+        logic.paths.forEach(p => {
+            for (let i = 0; i < p.length - 1; i++) {
+                const l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                l.setAttribute('x1', p[i].x+'%'); l.setAttribute('y1', p[i].y+'%');
+                l.setAttribute('x2', p[i+1].x+'%'); l.setAttribute('y2', p[i+1].y+'%');
+                l.setAttribute('stroke', '#d32f2f'); l.setAttribute('stroke-width', '2.5');
+                sl.appendChild(l);
+            }
+        });
         ml.innerHTML = '';
         db.forEach(data => {
             const isH = logic.points.some(p => p.n === data.n);
-            const m = document.createElement('div'); m.className = `marker ${isH?'highlight':''} ${data.size>2?'region-type':''}`;
-            m.style.left = data.x + '%'; m.style.top = data.y + '%'; m.dataset.size = data.size;
+            const m = document.createElement('div');
+            m.className = `marker ${isH?'highlight':''} ${data.size>2?'region-type':''}`;
+            m.style.left = data.x + '%'; m.style.top = data.y + '%';
+            m.dataset.size = data.size;
             m.innerHTML = `<div class="dot"></div><div class="label" style="opacity:${isH?1:0}">${data.n}</div>`;
-            m.onclick = () => { document.getElementById('search-input').value = data.n; handleSearch(data.n); };
+            m.onclick = () => { document.getElementById('search-input').value = data.n; handleSearch(); };
             ml.appendChild(m);
         });
-        applyMarkerStyles(); if (logic.points.length) flyTo(logic.points); refreshCollision();
+        applyMarkerStyles();
+        if (logic.points.length) flyTo(logic.points);
+        refreshCollision();
     }
 
-    // V1.0.5 核心還原：地名顯示權排序
+    // V1.0.5 核心還原：標籤碰撞排序（由小到大處理，大地名最後畫）
     function refreshCollision() {
         const markers = Array.from(document.querySelectorAll('.marker:not(.highlight)'));
         const occupied = [];
         markers.sort((a,b) => (parseInt(a.dataset.size)||0) - (parseInt(b.dataset.size)||0)).forEach(m => {
-            const lbl = m.querySelector('.label'), rect = lbl.getBoundingClientRect();
-            if (occupied.some(o => !(rect.right<o.left || rect.left>o.right || rect.bottom<o.top || rect.top>o.bottom))) lbl.style.opacity = "0";
+            const lbl = m.querySelector('.label');
+            const rect = lbl.getBoundingClientRect();
+            let overlap = occupied.some(o => !(rect.right < o.left || rect.left > o.right || rect.bottom < o.top || rect.top > o.bottom));
+            if (overlap) lbl.style.opacity = "0";
             else { lbl.style.opacity = "1"; occupied.push(rect); }
         });
     }
@@ -270,18 +228,28 @@
     function initResizers() {
         const rMain = document.getElementById('resizer-main'), side = document.getElementById('side-panel'), rInner = document.getElementById('resizer-inner'), info = document.getElementById('info-area');
         rMain.onmousedown = rMain.ontouchstart = (e) => {
-            e.preventDefault(); const startX = e.clientX || e.touches[0].clientX, startY = e.clientY || e.touches[0].clientY, startW = side.offsetWidth, startH = side.offsetHeight;
+            e.preventDefault();
+            const startX = e.clientX || e.touches[0].clientX, startY = e.clientY || e.touches[0].clientY, startW = side.offsetWidth, startH = side.offsetHeight;
             window.onmousemove = window.ontouchmove = (ev) => {
                 const x = ev.clientX || ev.touches[0].clientX, y = ev.clientY || ev.touches[0].clientY;
-                if (window.innerWidth < window.innerHeight) { const h = Math.max(100, startH + (startY - y)); side.style.height = h+"px"; side.style.flex = `0 0 ${h}px`; lastPortraitHeight = h+"px"; }
-                else { const w = Math.max(200, startW + (startX - x)); side.style.width = w+"px"; side.style.flex = "none"; lastLandscapeWidth = w+"px"; }
+                if (window.innerWidth < window.innerHeight) {
+                    const h = Math.max(100, startH + (startY - y));
+                    side.style.height = h + "px"; side.style.flex = `0 0 ${h}px`;
+                    lastPortraitHeight = h + "px";
+                } else {
+                    const w = Math.max(200, startW + (startX - x));
+                    side.style.width = w + "px"; side.style.flex = "none";
+                    lastLandscapeWidth = w + "px";
+                }
                 syncOverlay(); updateMinScale(); refreshCollision();
             };
             window.onmouseup = window.ontouchend = () => window.onmousemove = window.ontouchmove = null;
         };
         rInner.onmousedown = rInner.ontouchstart = (e) => {
             const startY = e.clientY || e.touches[0].clientY, startH = info.offsetHeight;
-            window.onmousemove = window.ontouchmove = (ev) => { info.style.flex = `0 0 ${Math.max(44, startH + ((ev.clientY || ev.touches[0].clientY) - startY))}px`; };
+            window.onmousemove = window.ontouchmove = (ev) => {
+                info.style.flex = `0 0 ${Math.max(44, startH + ((ev.clientY || ev.touches[0].clientY) - startY))}px`;
+            };
             window.onmouseup = window.ontouchend = () => window.onmousemove = window.ontouchmove = null;
         };
     }
@@ -292,7 +260,7 @@
 
     async function loadProject(f) {
         if (!f) return; currentFolder = f; localStorage.setItem('lastBibleFolder', f); allCoords = [];
-        const dRes = await fetch(`${f}/data.csv?t=${Date.now()}`); eventData = parseCSV(await dRes.text()).slice(1).filter(r => r.length > 2).map(r => { const o = { id:r[0], time:r[1], event:r[2], loc:r[3], script:r[4], note:r[5] }; o._searchStr = Object.values(o).join(' ').toLowerCase(); return o; });
+        const dRes = await fetch(`${f}/data.csv?t=${Date.now()}`); eventData = parseCSV(await dRes.text()).slice(1).filter(r => r.length > 2).map(r => ({ id:r[0], time:r[1], event:r[2], loc:r[3], script:r[4], note:r[5] }));
         filteredData = [...eventData]; renderTable(filteredData);
         for (let x = 1; x <= 15; x++) { try { const cRes = await fetch(`${f}/coords-${x}.csv?t=${Date.now()}`); if (!cRes.ok) break; parseCSV(await cRes.text()).slice(1).forEach(r => { if(r[1] && r[5]) allCoords.push({ n: r[1].trim(), x: r[5], y: r[6], mapIdx: x, size: parseInt(r[7])||0 }); }); } catch(e) { break; } }
         if(filteredData.length) selectEvent(0);
@@ -300,8 +268,8 @@
 
     function findBestMatch(t, db) { let b = null, m = Infinity; for (const i of db) { if (i.n === t) return i; if (i.n.includes(t) || t.includes(i.n)) { let d = Math.abs(i.n.length - t.length); if (d < m) { m = d; b = i; } } } return b; }
     function parseLocationLogic(l, db) { const res = { paths: [], points: [] }; l.split('+').forEach(b => { if (b.includes('→')) { const c = b.split('→').map(p => findBestMatch(p.replace(/\(.*?\)/g, '').trim(), db)).filter(p => p); if (c.length > 1) res.paths.push(c); c.forEach(p => res.points.push(p)); } else { const pt = findBestMatch(b.replace(/\(.*?\)/g, '').trim(), db); if (pt) res.points.push(pt); } }); return res; }
-    function applyMarkerStyles() { const s = pz ? pz.getScale() : 1; document.querySelectorAll('.marker').forEach(m => { const label = m.querySelector('.label'); label.style.fontSize = (baseMarkerFontSize + ((parseInt(m.dataset.size)||0) * 1.5)) + 'px'; m.style.transform = `translate(-50%, -50%) scale(${1/s})`; }); }
-    function adjustFontSize(d) { baseMarkerFontSize = Math.max(8, Math.min(30, baseMarkerFontSize + d)); document.documentElement.style.setProperty('--base-fs', baseMarkerFontSize + 'px'); applyMarkerStyles(); refreshCollision(); }
+    function applyMarkerStyles() { const s = pz ? pz.getScale() : 1; document.querySelectorAll('.marker').forEach(m => { m.style.transform = `translate(-50%, -50%) scale(${1/s})`; }); }
+    function adjustFontSize(d) { baseMarkerFontSize = Math.max(8, Math.min(30, baseMarkerFontSize + d)); document.documentElement.style.setProperty('--base-fs', baseMarkerFontSize + 'px'); refreshCollision(); }
     function flyTo(pts) { 
         const img = document.getElementById('bg-map'), c = document.getElementById('map-section'); if (!img.offsetWidth) return;
         const cR = c.getBoundingClientRect(), iR = img.getBoundingClientRect(), sc = pz.getScale(), pan = pz.getPan();
