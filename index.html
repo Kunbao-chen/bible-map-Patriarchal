@@ -1,237 +1,64 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>聖經史地互動地圖 V1.1.11</title>
-    <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
-    <style>
-        :root { --gold: #c5a059; --dark: #2c3e50; --brown: #5d4037; --ink-blue: rgba(50, 75, 95, 0.6); --handle-bg: #ddd; --base-fs: 14px; }
-        * { box-sizing: border-box; }
-        body { margin: 0; padding: 0; width: 100vw; height: 100dvh; overflow: hidden; background: #fdf6e3; font-family: "微軟正黑體", "Heiti TC", "Apple LiGothic Medium", sans-serif; }
-        #app-container { display: flex; width: 100%; height: 100%; flex-direction: row; }
-        @media (max-width: 800px) and (orientation: portrait) { #app-container { flex-direction: column; } #side-panel { width: 100%; height: 33.33dvh; flex: none; } }
-        #map-section { flex: 1; position: relative; overflow: hidden; background: #e5d3b3; }
-        #panzoom-element { display: inline-block; position: relative; }
-        #bg-map { display: block; max-width: none; user-select: none; }
-        .marker { position: absolute; transform: translate(-50%, -50%); display: grid; place-items: center; z-index: 10; cursor: pointer; }
-        .marker .dot { grid-area: 1/1; width: 5px; height: 5px; background: rgba(93,64,55,0.5); border-radius: 50%; z-index: 1; }
-        .marker .label { grid-area: 1/1; opacity: 0; padding: 2px 6px; border-radius: 8px; background: rgba(255,255,255,0.9); border: 1.5px solid var(--brown); white-space: nowrap; font-weight: bold; color: var(--brown); transition: opacity 0.4s ease-in-out, transform 0.2s ease; pointer-events: none; z-index: 2; }
-        .marker.region-type .label { background: none !important; border: none !important; font-family: 'ZCOOL KuaiLe', cursive; color: var(--ink-blue); text-shadow: 0 0 5px #fdf6e3, 0 0 2px #fdf6e3; }
-        .marker.highlight { z-index: 1000 !important; }
-        .marker.highlight .label { opacity: 1 !important; animation: labelBreathe 0.8s infinite alternate ease-in-out; background: #fffde7 !important; border: 2px solid #d32f2f !important; color: #d32f2f !important; pointer-events: auto !important; }
-        @keyframes labelBreathe { from { transform: translateY(0) scale(1); } to { transform: translateY(-6px) scale(1.05); } }
-        .search-container { position: absolute; right: 12px; top: 12px; z-index: 2000; display: flex; flex-direction: column; align-items: flex-end; }
-        .search-bar-wrapper { display: flex; align-items: center; background: rgba(255,255,255,0.4); backdrop-filter: blur(8px); border-radius: 10px; border: 2px solid var(--brown); padding: 2px; }
-        #search-input { width: 0; opacity: 0; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); border: none; background: transparent; height: 32px; outline: none; font-size: 14px; }
-        #search-input.open { width: 160px; opacity: 1; padding: 0 8px; }
-        .search-btn { width: 34px; height: 34px; cursor: pointer; display: flex; align-items: center; justify-content: center; background: transparent; border: none; }
-        #side-panel { background: white; display: flex; flex-direction: column; overflow: hidden; position: relative; flex: 0 0 33.33%; flex-shrink: 0; }
-        #info-area { display: none; flex-direction: column; background: #fff; flex: 0 0 45%; overflow: hidden; }
-        #info-header { background: var(--dark); color: white; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; height: 44px; z-index: 5; }
-        #info-body { padding: 15px; overflow-y: auto; flex: 1; font-size: var(--base-fs); }
-        #list-container { flex: 1; overflow-y: auto; }
-        #list-container table { font-size: var(--base-fs); width: 100%; border-collapse: collapse; }
-        tr.active-row td { background: #fffde7; font-weight: bold; border-left: 5px solid var(--gold); }
-        #scripture-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 3000; background: rgba(0,0,0,0.5); }
-        .modal-content { position: absolute; top: 5%; left: 5%; width: 90%; height: 90%; background: white; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
-        .modal-header { background: var(--dark); color: white; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; }
-        .modal-close { cursor: pointer; font-size: 28px; line-height: 1; }
-        #scripture-frame { flex: 1; border: none; width: 100%; height: 100%; }
-        .script-link { color: #2980b9; cursor: pointer; text-decoration: underline; font-weight: bold; }
-    </style>
-</head>
-<body>
+/* --- 手術部位：精確替換 index.html 中的 openScripture 函式 --- */
 
-<div id="app-container">
-    <div id="map-section">
-        <div class="search-container">
-            <div class="search-bar-wrapper">
-                <input type="text" id="search-input" placeholder="搜尋..." oninput="handleSearch()">
-                <button class="search-btn" onclick="toggleSearch()"><svg viewBox="0 0 24 24" width="20" fill="#5d4037"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 10 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg></button>
-            </div>
-        </div>
-        <div id="panzoom-element">
-            <img src="" id="bg-map">
-            <div id="overlay-container" style="position:absolute; top:0; left:0; pointer-events:none;">
-                <svg id="svg-layer" style="position:absolute; width:100%; height:100%;"></svg>
-                <div id="marker-layer"></div>
-            </div>
-        </div>
-    </div>
-    <div id="resizer-main" style="background:#ddd; z-index:1100; cursor:col-resize; width:12px;"></div>
-    <div id="side-panel">
-        <div id="folder-nav"><select id="folder-select" onchange="loadProject(this.value)" style="width:100%; padding:8px;"><option value="">載入中...</option></select></div>
-        <div id="info-area">
-            <div id="info-header" onclick="toggleInfo()"><div>📜 詳情 <span id="info-arrow">▼</span></div><div style="display:flex; gap:10px;"><button onclick="navEvent(-1); event.stopPropagation();">◀</button><button onclick="navEvent(1); event.stopPropagation();">▶</button></div></div>
-            <div id="info-body">
-                <div id="info-time" style="color:#888;"></div>
-                <h3 id="info-title" style="color:var(--gold); margin:5px 0;"></h3>
-                <div id="info-path" style="background:#f9f9f9; padding:8px; border-radius:4px; margin:5px 0; font-weight:bold;"></div>
-                <p id="info-script"></p>
-                <div id="info-note"></div>
-            </div>
-        </div>
-        <div id="list-container"><table><tbody id="table-body"></tbody></table></div>
-    </div>
-</div>
-
-<div id="scripture-modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <div id="modal-title" style="flex:1;"></div>
-            <span class="modal-close" onclick="closeScripture()">×</span>
-        </div>
-        <iframe id="scripture-frame" src=""></iframe>
-    </div>
-</div>
-
-<script>
-    const SCRIPTURE_PHYSICAL_MAP = { 
-        "阿爾瑪書": "bofm/alma", "阿": "bofm/alma", "希伯來書": "nt/heb", "來": "nt/heb", "希": "nt/heb",
-        "教義和聖約": "dc-testament/dc", "教約": "dc-testament/dc", "創世記": "ot/gen", "創": "ot/gen", 
-        "出": "ot/ex", "利": "ot/lev", "民": "ot/num", "申": "ot/deut", "書": "ot/josh", "士": "ot/judg", 
-        "得": "ot/ruth", "撒上": "ot/1-sam", "撒下": "ot/2-sam", "王上": "ot/1-kgs", "王下": "ot/2-kgs", 
-        "代上": "ot/1-chr", "代下": "ot/2-chr", "拉": "ot/ezra", "尼": "ot/neh", "斯": "ot/esth", 
-        "伯": "ot/job", "詩": "ot/ps", "箴": "ot/prov", "傳": "ot/eccl", "歌": "ot/ss", "賽": "ot/isa", 
-        "耶": "ot/jer", "哀": "ot/lam", "結": "ot/ezek", "但": "ot/dan", "何": "ot/hos", "珥": "ot/joel", 
-        "摩": "ot/amos", "俄": "ot/obad", "拿": "ot/jonah", "彌": "ot/micah", "鴻": "ot/nahum", 
-        "哈": "ot/hab", "番": "ot/zeph", "該": "ot/hag", "亞": "ot/zech", "瑪": "ot/mal",
-        "太": "nt/matt", "可": "nt/mark", "路": "nt/luke", "約": "nt/john", "徒": "nt/acts", 
-        "羅": "nt/rom", "林前": "nt/1-cor", "林後": "nt/2-cor", "加": "nt/gal", "弗": "nt/eph", 
-        "腓": "nt/phil", "西": "nt/col", "帖前": "nt/1-thes", "帖後": "nt/2-thes", "提前": "nt/1-tim", 
-        "提後": "nt/2-tim", "多": "nt/titus", "門": "nt/philem", "雅": "nt/james", "彼前": "nt/1-pet", 
-        "彼後": "nt/2-pet", "約一": "nt/1-jn", "約二": "nt/2-jn", "約三": "nt/3-jn", "猶": "nt/jude", "啟": "nt/rev",
-        "腓一": "bofm/1-ne", "腓二": "bofm/2-ne", "各": "bofm/jacob", "愛": "bofm/enos", "吉": "bofm/jarom", 
-        "奧": "bofm/omni", "摩言": "bofm/w-of-m", "摩賽": "bofm/mosiah", "曼": "bofm/hel", 
-        "腓三": "bofm/3-ne", "腓四": "bofm/4-ne", "摩爾門": "bofm/morm", "以": "bofm/ether", "乃": "bofm/moro",
-        "罕": "pgp/abr", "摩西": "pgp/moses"
-    };
-
-    let pz, eventData = [], filteredData = [], allCoords = [], currentFolder = '', currentMapIdx = -1, currentEventIdx = -1;
-
-    /* --- [手術部位 A：更新 openScripture 函式邏輯] --- */
-    function openScripture(bookKey, chap, sec, endSec) {
-        const path = SCRIPTURE_PHYSICAL_MAP[bookKey];
-        
-        // 1. 主要來源與錨點位移計算
-        let primaryUrl = "";
-        if (path) {
-            let idParam = sec ? `p${sec}` : "";
-            if (sec && endSec) idParam = `p${sec}-p${endSec}`;
-            primaryUrl = `https://www.churchofjesuschrist.org/study/scriptures/${path}/${chap}?lang=zho`;
-            if (sec) {
-                // 若節數大於 1 則減 1 以避免遮擋，若為 1 則維持 1
-                const anchor = parseInt(sec) > 1 ? parseInt(sec) - 1 : 1;
-                primaryUrl += `&id=${idParam}#p${anchor}`;
-            }
-        }
-
-        // 2. 備用來源
-        const backupUrl = `https://bible.fhl.net/new/read.php?chineses=${encodeURIComponent(bookKey)}&chap=${chap}`;
-
-        const modal = document.getElementById('scripture-modal');
-        const title = document.getElementById('modal-title');
-        
-        // 3. 植入按鈕 (主要來源/備用連結/在新頁面開啟)
-        title.innerHTML = `
-            <div style="display:flex; flex-direction:column; gap:8px;">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <span style="font-weight:bold;">${bookKey} 第 ${chap} 章</span>
-                    <button onclick="window.open(document.getElementById('scripture-frame').src, '_blank')" 
-                            style="font-size:11px; padding:2px 6px; background:rgba(255,255,255,0.2); border:1px solid white; color:white; border-radius:4px; cursor:pointer;">
-                        🌐 在新頁面開啟
-                    </button>
-                </div>
-                <div style="display:flex; gap:8px;">
-                    <button id="btn-primary" onclick="switchSrc('${primaryUrl}', true)" 
-                            style="flex:1; font-size:12px; padding:4px; cursor:pointer; background:${primaryUrl?'#c5a059':'#666'}; border:none; color:white; border-radius:4px;">主要來源</button>
-                    <button id="btn-backup" onclick="switchSrc('${backupUrl}', false)" 
-                            style="flex:1; font-size:12px; padding:4px; cursor:pointer; background:#2980b9; border:none; color:white; border-radius:4px;">備用連結</button>
-                </div>
-            </div>
-        `;
-
-        const defaultUrl = primaryUrl || backupUrl;
-        switchSrc(defaultUrl, !!primaryUrl);
-        modal.style.display = 'block';
-    }
-
-    /* --- [手術部位 B：新增 switchSrc 工具函式] --- */
-    function switchSrc(url, isPrimary) {
-        if (!url || url === "null") return;
-        const frame = document.getElementById('scripture-frame');
-        const btnP = document.getElementById('btn-primary');
-        const btnB = document.getElementById('btn-backup');
-        frame.src = url;
-        if(btnP && btnB) {
-            btnP.style.opacity = isPrimary ? "1" : "0.4";
-            btnB.style.opacity = isPrimary ? "0.4" : "1";
-        }
-    }
-
-    function closeScripture() { document.getElementById('scripture-modal').style.display = 'none'; document.getElementById('scripture-frame').src = ''; }
-    function toggleSearch() { const input = document.getElementById('search-input'); input.classList.toggle('open'); if (input.classList.contains('open')) input.focus(); }
-    function handleSearch() { const term = document.getElementById('search-input').value.trim().toLowerCase(); filteredData = eventData.filter(d => Object.values(d).join(' ').toLowerCase().includes(term)); renderTable(filteredData); if (filteredData.length > 0) selectEvent(0); }
-    function selectEvent(idx) { currentEventIdx = idx; const item = filteredData[idx]; updateMapAndInfo(item); }
-    function navEvent(step) { const n = currentEventIdx + step; if (n >= 0 && n < filteredData.length) selectEvent(n); }
+function openScripture(bookKey, chap, sec, endSec) {
+    const path = SCRIPTURE_PHYSICAL_MAP[bookKey];
     
-    async function updateMapAndInfo(item) {
-        let targetMapIdx = 1; const testNames = item.loc.split(/[+→]/).map(p => p.trim());
-        for (let x = 15; x >= 1; x--) { const db = allCoords.filter(c => c.mapIdx === x); if (db.length && testNames.every(n => findBestMatch(n, db))) { targetMapIdx = x; break; } }
-        if (currentMapIdx !== targetMapIdx) {
-            currentMapIdx = targetMapIdx; const img = document.getElementById('bg-map'); img.src = `${currentFolder}/picture-${targetMapIdx}.png`;
-            await new Promise(res => img.onload = () => { syncOverlay(); updateMinScale(); res(); });
+    // 1. 計算主要來源 (LDS) 並處理錨點偏移
+    let primaryUrl = "";
+    if (path) {
+        let idParam = sec ? `p${sec}` : "";
+        if (sec && endSec) idParam = `p${sec}-p${endSec}`;
+        primaryUrl = `https://www.churchofjesuschrist.org/study/scriptures/${path}/${chap}?lang=zho`;
+        if (sec) {
+            // [手術位置] 錨點偏移：若 > 1 則減 1，避免頂端遮蔽；若為 1 則維持 1
+            const anchor = parseInt(sec) > 1 ? parseInt(sec) - 1 : 1;
+            primaryUrl += `&id=${idParam}#p${anchor}`;
         }
-        const mapData = allCoords.filter(c => c.mapIdx === targetMapIdx); renderVisuals(mapData, parseLocationLogic(item.loc, mapData)); updateInfoPanel(item);
     }
 
-    function renderVisuals(db, logic) {
-        const ml = document.getElementById('marker-layer'), sl = document.getElementById('svg-layer'); sl.innerHTML = ''; ml.innerHTML = '';
-        logic.paths.forEach(path => { for (let i = 0; i < path.length - 1; i++) { const line = document.createElementNS('http://www.w3.org/2000/svg', 'line'); line.setAttribute('x1', path[i].x+'%'); line.setAttribute('y1', path[i].y+'%'); line.setAttribute('x2', path[i+1].x+'%'); line.setAttribute('y2', path[i+1].y+'%'); line.setAttribute('stroke', '#d32f2f'); line.setAttribute('stroke-width', '2.5'); sl.appendChild(line); } });
-        db.forEach(data => {
-            const isH = logic.points.some(p => p.n === data.n); const m = document.createElement('div');
-            m.className = `marker ${isH ? 'highlight' : ''} ${data.size > 2 ? 'region-type' : ''}`; m.style.left = data.x + '%'; m.style.top = data.y + '%';
-            m.innerHTML = `<div class="dot"></div><div class="label">${data.n}</div>`; ml.appendChild(m);
-        });
-        if (logic.points.length) flyTo(logic.points);
-    }
+    // 2. 計算備用連結 (信望愛)
+    const backupUrl = `https://bible.fhl.net/new/read.php?chineses=${encodeURIComponent(bookKey)}&chap=${chap}`;
 
-    function updateInfoPanel(item) {
-        document.getElementById('info-area').style.display = 'flex';
-        document.getElementById('info-title').innerText = item.event;
-        document.getElementById('info-time').innerText = item.time;
-        document.getElementById('info-path').innerText = `地點：${item.loc}`;
-        const sortedBooks = Object.keys(SCRIPTURE_PHYSICAL_MAP).sort((a, b) => b.length - a.length).join('|');
-        const regex = new RegExp(`(${sortedBooks})[^\\u4e00-\\u9fa5\\w]*(\\d+)(?:[:：](\\d+)(?:[\\-－—](\\d+))?)?`, 'g');
-        document.getElementById('info-script').innerHTML = item.script.replace(regex, (m, b, c, s, e) => `<span class="script-link" onclick="openScripture('${b}', ${c}, '${s||""}', '${e||""}')">${m}</span>`);
-        document.getElementById('info-note').innerHTML = item.note;
-    }
+    const modal = document.getElementById('scripture-modal');
+    const title = document.getElementById('modal-title');
+    
+    // 3. 僅修改 title 內部的 innerHTML，不變動 modal 原有結構
+    title.innerHTML = `
+        <div style="display:flex; flex-direction:column; gap:8px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-weight:bold;">${bookKey} 第 ${chap} 章</span>
+                <button onclick="window.open(document.getElementById('scripture-frame').src, '_blank')" 
+                        style="font-size:11px; padding:2px 6px; background:rgba(255,255,255,0.2); border:1px solid white; color:white; border-radius:4px; cursor:pointer;">
+                    🌐 新頁開啟
+                </button>
+            </div>
+            <div style="display:flex; gap:8px;">
+                <button id="btn-primary" onclick="switchSrc('${primaryUrl}', true)" 
+                        style="flex:1; font-size:12px; padding:4px; cursor:pointer; background:${primaryUrl?'#c5a059':'#666'}; border:none; color:white; border-radius:4px;">主要來源</button>
+                <button id="btn-backup" onclick="switchSrc('${backupUrl}', false)" 
+                        style="flex:1; font-size:12px; padding:4px; cursor:pointer; background:#2980b9; border:none; color:white; border-radius:4px;">備用連結</button>
+            </div>
+        </div>
+    `;
 
-    function toggleInfo() { const b = document.getElementById('info-body'), a = document.getElementById('info-arrow'); const isHidden = b.style.display === 'none'; b.style.display = isHidden ? 'block' : 'none'; a.innerText = isHidden ? '▼' : '▲'; }
-    function parseCSV(t) { return t.split('\n').filter(r => r.trim()).map(r => r.split(',').map(c => c.trim().replace(/^"|"$/g, ''))); }
-    async function loadProject(f) {
-        if (!f) return; currentFolder = f; allCoords = [];
-        const dRes = await fetch(`${f}/data.csv`); eventData = parseCSV(await dRes.text()).slice(1).map(r => ({ id:r[0], time:r[1], event:r[2], loc:r[3], script:r[4], note:r[5] }));
-        filteredData = [...eventData]; renderTable(filteredData);
-        for (let x = 1; x <= 15; x++) { try { const cRes = await fetch(`${f}/coords-${x}.csv`); if (!cRes.ok) break; parseCSV(await cRes.text()).slice(1).forEach(r => allCoords.push({ n:r[1], x:r[5], y:r[6], mapIdx:x, size:parseInt(r[7])||0 })); } catch(e) { break; } }
-        if(filteredData.length) selectEvent(0);
-    }
-    function renderTable(data) { const b = document.getElementById('table-body'); b.innerHTML = ''; data.forEach((item, i) => { const tr = document.createElement('tr'); if(i === currentEventIdx) tr.className = 'active-row'; tr.innerHTML = `<td width="40" style="padding:10px;">${item.id}</td><td style="padding:10px;">${item.event}</td>`; tr.onclick = () => selectEvent(i); b.appendChild(tr); }); }
-    function findBestMatch(t, db) { return db.find(i => i.n === t) || db.find(i => i.n.includes(t) || t.includes(i.n)); }
-    function parseLocationLogic(l, db) { const res = { paths:[], points:[] }; l.split('+').forEach(b => { if(b.includes('→')) { const c = b.split('→').map(p => findBestMatch(p.trim(), db)).filter(p => p); if(c.length > 1) res.paths.push(c); c.forEach(p => res.points.push(p)); } else { const p = findBestMatch(b.trim(), db); if(p) res.points.push(p); } }); return res; }
-    function flyTo(pts) { const c = document.getElementById('map-section').getBoundingClientRect(); let x = 0, y = 0; pts.forEach(p => { x += parseFloat(p.x); y += parseFloat(p.y); }); pz.pan((c.width/2)-(x/pts.length/100*document.getElementById('bg-map').offsetWidth), (c.height/2)-(y/pts.length/100*document.getElementById('bg-map').offsetHeight), { animate:true }); }
-    function syncOverlay() { const i = document.getElementById('bg-map'), o = document.getElementById('overlay-container'); o.style.width = i.offsetWidth + 'px'; o.style.height = i.offsetHeight + 'px'; }
-    function updateMinScale() { const i = document.getElementById('bg-map'), c = document.getElementById('map-section'); pz.setOptions({ minScale: Math.max(c.clientWidth/i.offsetWidth, c.clientHeight/i.offsetHeight) }); }
+    // 執行初始載入邏輯
+    const defaultUrl = primaryUrl || backupUrl;
+    switchSrc(defaultUrl, !!primaryUrl);
+    modal.style.display = 'block';
+}
 
-    window.onload = async () => {
-        pz = Panzoom(document.getElementById('panzoom-element'), { maxScale: 8, contain: 'outside' });
-        document.getElementById('map-section').addEventListener('wheel', pz.zoomWithWheel);
-        const res = await fetch(`folder.csv`); const folders = parseCSV(await res.text()).slice(1);
-        const sel = document.getElementById('folder-select'); folders.forEach(f => { if(f[0]) { const opt = document.createElement('option'); opt.value = f[0]; opt.innerText = f[1] || f[0]; sel.appendChild(opt); } });
-        if(sel.options.length > 1) { sel.selectedIndex = 1; loadProject(sel.value); }
-    };
-</script>
-</body>
-</html>
+/* --- 手術部位：在 closeScripture 之前植入 switchSrc 工具函式 --- */
+function switchSrc(url, isPrimary) {
+    if (!url || url === "null") return;
+    const frame = document.getElementById('scripture-frame');
+    const btnP = document.getElementById('btn-primary');
+    const btnB = document.getElementById('btn-backup');
+    
+    frame.src = url;
+    
+    // 透過透明度提供視覺反饋，不改動原有按鈕屬性
+    if(btnP && btnB) {
+        btnP.style.opacity = isPrimary ? "1" : "0.4";
+        btnB.style.opacity = isPrimary ? "0.4" : "1";
+    }
+}
