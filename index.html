@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>聖經史地互動地圖 V1.1.12</title>
+    <title>聖經史地互動地圖 V1.1.13</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -22,11 +22,21 @@
         #bg-map { display: block; max-width: none; user-select: none; }
         .marker { position: absolute; transform: translate(-50%, -50%); display: grid; place-items: center; z-index: 10; cursor: pointer; }
         .marker .dot { grid-area: 1/1; width: 5px; height: 5px; background: rgba(93,64,55,0.5); border-radius: 50%; z-index: 1; }
-        .marker .label { grid-area: 1/1; opacity: 0; padding: 2px 6px; border-radius: 8px; background: rgba(255,255,255,0.9); border: 1.5px solid var(--brown); white-space: nowrap; font-weight: bold; color: var(--brown); transition: opacity 0.4s ease-in-out, transform 0.2s ease; pointer-events: none; z-index: 2; }
+        .marker .label { position: relative; grid-area: 1/1; opacity: 0; padding: 2px 6px; border-radius: 8px; background: rgba(255,255,255,0.9); border: 1.5px solid var(--brown); white-space: nowrap; font-weight: bold; color: var(--brown); transition: opacity 0.4s ease-in-out, transform 0.2s ease; pointer-events: none; z-index: 2; transform-origin: center center; }
         .marker.region-type .label { background: none !important; border: none !important; font-family: 'ZCOOL KuaiLe', cursive; color: var(--ink-blue); text-shadow: 0 0 5px #fdf6e3, 0 0 2px #fdf6e3; }
         .marker.highlight { z-index: 1000 !important; }
-        .marker.highlight .label { opacity: 1 !important; animation: labelBreathe 0.8s infinite alternate ease-in-out; background: #fffde7 !important; border: 2px solid #d32f2f !important; color: #d32f2f !important; pointer-events: auto !important; }
-        @keyframes labelBreathe { from { transform: translateY(0) scale(1); } to { transform: translateY(-6px) scale(1.05); } }
+        
+        /* V1.1.13 修正：移除 animation 中的 transform，改用 top 避免覆蓋 JS 縮放 */
+        .marker.highlight .label { 
+            opacity: 1 !important; 
+            animation: labelBreathe 0.8s infinite alternate ease-in-out; 
+            background: #fffde7 !important; 
+            border: 2px solid #d32f2f !important; 
+            color: #d32f2f !important; 
+            pointer-events: auto !important; 
+            z-index: 1001;
+        }
+        @keyframes labelBreathe { from { top: 0px; } to { top: -8px; } }
 
         .search-container { position: absolute; right: 12px; top: 12px; z-index: 2000; display: flex; flex-direction: column; align-items: flex-end; }
         .search-bar-wrapper { display: flex; align-items: center; background: rgba(255,255,255,0.4); backdrop-filter: blur(8px); border-radius: 10px; border: 2px solid var(--brown); padding: 2px; }
@@ -229,18 +239,14 @@
         allMarkers.filter(m => m.classList.contains('highlight')).forEach(m => { const label = m.querySelector('.label'); label.style.opacity = "1"; m.style.pointerEvents = "auto"; });
     }
 
-    // V1.1.12：回退至 V1.0.5 的全域事件監聽架構，修復移動端拉桿失效問題
     function initResizers() {
         const rMain = document.getElementById('resizer-main'), side = document.getElementById('side-panel'), rInner = document.getElementById('resizer-inner'), info = document.getElementById('info-area');
         let startX, startY, startW, startH;
-
-        // --- 主拉桿 (左右/上下) ---
         const startMain = (e) => {
             const isTouch = e.type.startsWith('touch');
             const px = isTouch ? e.touches[0].clientX : e.clientX;
             const py = isTouch ? e.touches[0].clientY : e.clientY;
             startX = px; startY = py; startW = side.offsetWidth; startH = side.offsetHeight;
-            
             const moveMain = (ev) => {
                 const x = (ev.type.startsWith('touch')) ? ev.touches[0].clientX : ev.clientX;
                 const y = (ev.type.startsWith('touch')) ? ev.touches[0].clientY : ev.clientY;
@@ -264,12 +270,10 @@
         rMain.addEventListener('mousedown', startMain);
         rMain.addEventListener('touchstart', startMain);
 
-        // --- 內拉桿 (詳情區與事件區之間) ---
         const startInner = (e) => {
             const isTouch = e.type.startsWith('touch');
             startY = isTouch ? e.touches[0].clientY : e.clientY;
             startH = info.offsetHeight;
-            
             const moveInner = (ev) => {
                 const y = (ev.type.startsWith('touch')) ? ev.touches[0].clientY : ev.clientY;
                 const newH = Math.max(44, Math.min(startH + (y - startY), side.offsetHeight * 0.85));
@@ -281,7 +285,6 @@
                 window.removeEventListener('mouseup', endInner);
                 window.removeEventListener('touchend', endInner);
             };
-            // 關鍵：將監聽對象改回 window，確保手指滑離拉桿範圍時仍能運作
             window.addEventListener('mousemove', moveInner);
             window.addEventListener('touchmove', moveInner, { passive: false });
             window.addEventListener('mouseup', endInner);
@@ -337,11 +340,17 @@
 
     function findBestMatch(t, db) { let b = null, m = Infinity; for (const i of db) { if (i.n === t) return i; if (i.n.includes(t) || t.includes(i.n)) { let d = Math.abs(i.n.length - t.length); if (d < m) { m = d; b = i; } } } return b; }
     function parseLocationLogic(locStr, db) { const result = { paths: [], points: [] }; locStr.split('+').map(b => b.trim()).forEach(block => { if (block.includes('→')) { const chain = block.split('→').map(p => findBestMatch(p.replace(/\(.*?\)/g, '').trim(), db)).filter(p => p); if (chain.length > 1) result.paths.push(chain); chain.forEach(p => result.points.push(p)); } else { const pt = findBestMatch(block.replace(/\(.*?\)/g, '').trim(), db); if (pt) result.points.push(pt); } }); return result; }
+    
+    // V1.1.13 修正：徹底分離動畫與 transform 屬性，解決字體隨倍率縮小問題
     function applyMarkerStyles() {
-        const s = pz ? pz.getScale() : 1, anti = s > 0 ? 1 / s : 1;
+        if (!pz) return;
+        const s = pz.getScale(), anti = s > 0 ? 1 / s : 1;
         document.querySelectorAll('.marker').forEach(m => { 
             const gain = parseInt(m.dataset.size)||0, label = m.querySelector('.label'); 
-            label.style.fontSize = (baseMarkerFontSize + (gain * 2)) + 'px'; label.style.transform = `scale(${anti})`; m.style.transform = `translate(-50%, -50%)`; 
+            label.style.fontSize = (baseMarkerFontSize + (gain * 2)) + 'px';
+            // 關鍵修正：單獨控制 transform，不受動畫 translateY 覆蓋
+            label.style.transform = `scale(${anti})`; 
+            m.style.transform = `translate(-50%, -50%)`; 
         });
     }
     function adjustFontSize(delta) { baseMarkerFontSize = Math.max(8, Math.min(30, baseMarkerFontSize + delta)); applyMarkerStyles(); refreshCollision(); }
