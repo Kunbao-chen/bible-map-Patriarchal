@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>聖經史地互動地圖 V1.1.6</title>
+    <title>聖經史地互動地圖 V1.1.7</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -229,9 +229,10 @@
         const scriptEl = document.getElementById('info-script');
         const scriptRaw = item.script || "", ldsLinkRaw = item.ldsLink || ""; 
         
-        // [手術刀修正 V1.1.6] 優化經文正則表達式，增加符號寬容度並解決中文邊界辨識問題
+        // [手術刀修正 V1.1.7] 採用強化邊界策略，解決單字經卷名在字首、標點旁的辨識難題
         const sortedBooks = Object.keys(SCRIPTURE_PHYSICAL_MAP).sort((a, b) => b.length - a.length).join('|');
-        const regex = new RegExp(`(${sortedBooks})[\\s\\t]*(\\d+)(?:[:：](\\d+)(?:[\\-－—](\\d+))?)?`, 'g');
+        // 邏輯核心：(經卷名) + (允許非中文非英文字元的緩衝) + (章) + (冒號) + (節) + (連字號) + (節)
+        const regex = new RegExp(`(${sortedBooks})[^\\u4e00-\\u9fa5\\w]*(\\d+)(?:[:：](\\d+)(?:[\\-－—](\\d+))?)?`, 'g');
         const wrapLink = (m, b, c, s, e) => `<span class="script-link" onclick="openScripture('${b}', ${c}, '${s||""}', '${e||""}')">${m}</span>`;
         
         scriptEl.innerHTML = scriptRaw.replace(regex, wrapLink);
