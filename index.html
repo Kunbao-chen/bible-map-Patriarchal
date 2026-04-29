@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>聖經史地互動地圖 V1.1.13</title>
+    <title>聖經史地互動地圖 V1.1.14</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -209,7 +209,7 @@
     function navEvent(step) { const nextIdx = currentEventIdx + step; if (nextIdx >= 0 && nextIdx < filteredData.length) { selectEvent(nextIdx); const r = document.getElementById('table-body').rows[nextIdx]; if(r) r.scrollIntoView({behavior:'smooth', block:'center'}); } }
 
     async function updateMapAndInfo(item) {
-        let targetMapIdx = 1; const testNames = item.loc.split(/[+→]/).map(p => p.replace(/\(.*?\)/g, '').trim());
+        let targetMapIdx = 1; const testNames = item.loc.split(/[+→]/).map(p => p.replace(/[（\(].*?[）\)]/g, '').trim());
         for (let x = 15; x >= 1; x--) { const db = allCoords.filter(c => c.mapIdx === x); if (db.length && testNames.every(n => findBestMatch(n, db))) { targetMapIdx = x; break; } }
         if (currentMapIdx !== targetMapIdx) {
             currentMapIdx = targetMapIdx; const img = document.getElementById('bg-map'); img.src = `${currentFolder}/picture-${targetMapIdx}.png`;
@@ -339,7 +339,7 @@
     }
 
     function findBestMatch(t, db) { let b = null, m = Infinity; for (const i of db) { if (i.n === t) return i; if (i.n.includes(t) || t.includes(i.n)) { let d = Math.abs(i.n.length - t.length); if (d < m) { m = d; b = i; } } } return b; }
-    function parseLocationLogic(locStr, db) { const result = { paths: [], points: [] }; locStr.split('+').map(b => b.trim()).forEach(block => { if (block.includes('→')) { const chain = block.split('→').map(p => findBestMatch(p.replace(/\(.*?\)/g, '').trim(), db)).filter(p => p); if (chain.length > 1) result.paths.push(chain); chain.forEach(p => result.points.push(p)); } else { const pt = findBestMatch(block.replace(/\(.*?\)/g, '').trim(), db); if (pt) result.points.push(pt); } }); return result; }
+    function parseLocationLogic(locStr, db) { const result = { paths: [], points: [] }; locStr.split('+').map(b => b.trim()).forEach(block => { if (block.includes('→')) { const chain = block.split('→').map(p => findBestMatch(p.replace(/[（\(].*?[）\)]/g, '').trim(), db)).filter(p => p); if (chain.length > 1) result.paths.push(chain); chain.forEach(p => result.points.push(p)); } else { const pt = findBestMatch(block.replace(/[（\(].*?[）\)]/g, '').trim(), db); if (pt) result.points.push(pt); } }); return result; }
     
     // V1.1.13 修正：徹底分離動畫與 transform 屬性，解決字體隨倍率縮小問題
     function applyMarkerStyles() {
