@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>聖經史地互動地圖 V1.1.14</title>
+    <title>聖經史地互動地圖 V1.1.13</title>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
@@ -12,304 +12,212 @@
         body { margin: 0; padding: 0; width: 100vw; height: 100dvh; overflow: hidden; background: #fdf6e3; font-family: "微軟正黑體", "Heiti TC", "Apple LiGothic Medium", sans-serif; }
         #app-container { display: flex; width: 100%; height: 100%; flex-direction: row; }
 
-        @media (max-width: 800px) and (orientation: portrait) {
-            #app-container { flex-direction: column; }
-            #side-panel { width: 100% !important; height: 40%; order: 2; border-left: none; border-top: 2px solid var(--gold); }
-            #map-section { height: 60%; order: 1; }
+        @media (max-width: 800px) and (orientation: portrait) { 
+            #app-container { flex-direction: column; } 
+            #side-panel { width: 100%; height: 33.33dvh; flex: none; } 
         }
 
-        #map-section { flex: 1; position: relative; background: #eee; overflow: hidden; cursor: grab; }
-        #map-section:active { cursor: grabbing; }
-        #panzoom-element { width: 1000px; height: 1414px; position: relative; transform-origin: 0 0; }
-        #main-map { width: 100%; height: 100%; display: block; -webkit-user-drag: none; }
+        #map-section { flex: 1; position: relative; overflow: hidden; background: #e5d3b3; }
+        #panzoom-element { display: inline-block; position: relative; }
+        #bg-map { display: block; max-width: none; user-select: none; }
+        .marker { position: absolute; transform: translate(-50%, -50%); display: grid; place-items: center; z-index: 10; cursor: pointer; }
+        .marker .dot { grid-area: 1/1; width: 5px; height: 5px; background: rgba(93,64,55,0.5); border-radius: 50%; z-index: 1; }
+        .marker .label { position: relative; grid-area: 1/1; opacity: 0; padding: 2px 6px; border-radius: 8px; background: rgba(255,255,255,0.9); border: 1.5px solid var(--brown); white-space: nowrap; font-weight: bold; color: var(--brown); transition: opacity 0.4s ease-in-out, transform 0.2s ease; pointer-events: none; z-index: 2; transform-origin: center center; }
+        .marker.region-type .label { background: none !important; border: none !important; font-family: 'ZCOOL KuaiLe', cursive; color: var(--ink-blue); text-shadow: 0 0 5px #fdf6e3, 0 0 2px #fdf6e3; }
+        .marker.highlight { z-index: 1000 !important; }
         
-        .marker {
-            position: absolute; width: 12px; height: 12px; background: red; border-radius: 50%;
-            transform: translate(-50%, -50%); cursor: pointer; border: 2px solid white;
-            box-shadow: 0 0 5px rgba(0,0,0,0.5); z-index: 10; transition: transform 0.2s;
+        /* V1.1.13 修正：移除 animation 中的 transform，改用 top 避免覆蓋 JS 縮放 */
+        .marker.highlight .label { 
+            opacity: 1 !important; 
+            animation: labelBreathe 0.8s infinite alternate ease-in-out; 
+            background: #fffde7 !important; 
+            border: 2px solid #d32f2f !important; 
+            color: #d32f2f !important; 
+            pointer-events: auto !important; 
+            z-index: 1001;
         }
-        .marker:hover { transform: translate(-50%, -50%) scale(1.5); z-index: 100; }
-        .marker-label {
-            position: absolute; left: 14px; top: -5px; white-space: nowrap;
-            background: rgba(255,255,255,0.9); padding: 2px 6px; border-radius: 4px;
-            font-size: 12px; font-weight: bold; color: #333; border: 1px solid #ccc;
-            pointer-events: none; opacity: 1; transition: opacity 0.2s;
-        }
+        @keyframes labelBreathe { from { top: 0px; } to { top: -8px; } }
 
-        #side-panel { width: 400px; background: #fff; display: flex; flex-direction: column; border-left: 2px solid var(--gold); box-shadow: -2px 0 10px rgba(0,0,0,0.1); position: relative; z-index: 200; }
-        #panel-header { padding: 15px; background: var(--dark); color: white; }
-        #panel-header h2 { margin: 0; font-size: 1.2rem; display: flex; align-items: center; justify-content: space-between; }
-        #folder-select { width: 100%; margin-top: 10px; padding: 8px; border-radius: 4px; border: none; font-size: 14px; }
-        
-        #event-list { flex: 1; overflow-y: auto; padding: 10px; background: #f9f9f9; }
-        .event-card { 
-            background: white; border-radius: 8px; padding: 12px; margin-bottom: 12px;
-            border-left: 5px solid var(--gold); box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-            cursor: pointer; transition: 0.2s;
-        }
-        .event-card:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-        .event-card.active { background: #fff9e6; border-left-color: #e67e22; }
-        .event-time { font-size: 11px; color: #7f8c8d; font-weight: bold; margin-bottom: 4px; }
-        .event-content { font-size: 14px; line-height: 1.5; color: #2c3e50; }
-        .event-meta { margin-top: 8px; font-size: 12px; display: flex; flex-wrap: wrap; gap: 8px; }
-        .meta-tag { background: #eee; padding: 2px 8px; border-radius: 10px; color: #666; }
-        .verse-link { color: #2980b9; text-decoration: none; font-weight: bold; }
-        .verse-link:hover { text-decoration: underline; }
+        .search-container { position: absolute; right: 12px; top: 12px; z-index: 2000; display: flex; flex-direction: column; align-items: flex-end; }
+        .search-bar-wrapper { display: flex; align-items: center; background: rgba(255,255,255,0.4); backdrop-filter: blur(8px); border-radius: 10px; border: 2px solid var(--brown); padding: 2px; }
+        .search-clear { cursor: pointer; display: none; padding: 0 8px; color: var(--brown); font-weight: bold; font-size: 18px; order: -1; }
+        #search-input { width: 0; opacity: 0; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); border: none; background: transparent; height: 32px; outline: none; font-size: 14px; }
+        #search-input.open { width: 160px; opacity: 1; padding: 0 8px; }
+        .search-btn { width: 34px; height: 34px; cursor: pointer; display: flex; align-items: center; justify-content: center; background: transparent; border: none; }
+        #search-history { display: none; width: 200px; background: white; border: 1px solid #ccc; border-radius: 8px; margin-top: 5px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); overflow-y: auto; max-height: 30dvh; }
+        .history-item { padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; cursor: pointer; font-size: 13px; }
 
-        .resizer-h { height: 8px; background: var(--handle-bg); cursor: ns-resize; width: 100%; display: none; }
-        .resizer-v { width: 8px; background: var(--handle-bg); cursor: ew-resize; height: 100%; position: absolute; left: 0; top: 0; }
-        @media (max-width: 800px) and (orientation: portrait) { .resizer-h { display: block; } .resizer-v { display: none; } }
+        #resizer-main { background: var(--handle-bg); z-index: 1100; display: flex; align-items: center; justify-content: center; touch-action: none; }
+        @media (min-width: 801px), (orientation: landscape) { #resizer-main { width: 12px; cursor: col-resize; height: 100%; } #resizer-main::after { content: "⋮"; } }
+        @media (max-width: 800px) and (orientation: portrait) { #resizer-main { height: 16px; cursor: row-resize; width: 100%; } #resizer-main::after { content: "⋯"; } }
+
+        #side-panel { background: white; display: flex; flex-direction: column; overflow: hidden; position: relative; flex: 0 0 33.33%; flex-shrink: 0; }
+        #info-area { display: none; flex-direction: column; background: #fff; flex: 0 0 45%; min-height: 44px; overflow: hidden; }
+        #info-header { background: var(--dark); color: white; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; height: 44px; z-index: 5; }
+        #info-body { padding: 15px; overflow-y: auto; flex: 1; font-size: var(--base-fs); }
+        #resizer-inner { height: 12px; background: #eee; cursor: row-resize; display: flex; align-items: center; justify-content: center; touch-action: none; flex-shrink: 0; border-top: 1px solid #ddd; z-index: 10; }
+        #list-container { flex: 1; overflow-y: auto; }
+        #list-container table { font-size: var(--base-fs); width: 100%; border-collapse: collapse; }
+        tr.active-row td { background: #fffde7; font-weight: bold; border-left: 5px solid var(--gold); }
+
+        .fab-container { position: absolute; left: 12px; top: 12px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; }
+        .fab-main { width: 42px; height: 42px; background: rgba(255,255,255,0.4); backdrop-filter: blur(8px); border: 2px solid var(--brown); border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .fab-menu button { width:34px; height:34px; border-radius:10px; border: 2px solid var(--brown); background: rgba(255,255,255,0.8); cursor: pointer; }
+
+        #scripture-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 3000; background: rgba(0,0,0,0.5); }
+        .modal-content { position: absolute; top: 5%; left: 5%; width: 90%; height: 90%; background: white; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
+        .modal-header { background: var(--dark); color: white; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; }
+        .modal-close { cursor: pointer; font-size: 24px; line-height: 1; }
+        #scripture-frame { flex: 1; border: none; width: 100%; height: 100%; }
+        .script-link { color: #2980b9; cursor: pointer; text-decoration: underline; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div id="app-container">
     <div id="map-section">
+        <div class="search-container">
+            <div class="search-bar-wrapper">
+                <div id="search-clear" class="search-clear" onclick="clearSearch()">×</div>
+                <input type="text" id="search-input" placeholder="搜尋..." oninput="handleSearch()" onfocus="showHistory()">
+                <button class="search-btn" onclick="toggleSearch()"><svg viewBox="0 0 24 24" width="20" fill="#5d4037"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 10 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg></button>
+            </div>
+            <div id="search-history"></div>
+        </div>
+        
+        <div class="fab-container">
+            <button class="fab-main" onclick="toggleFab()"><svg viewBox="0 0 24 24" width="22" fill="#5d4037"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg></button>
+            <div id="fab-menu" class="fab-menu" style="display:none; flex-direction:column; gap:6px;">
+                <button onclick="simulateWheel(-1)">+</button>
+                <button onclick="simulateWheel(1)">-</button>
+                <button onclick="resetView()">↺</button>
+                <button onclick="adjustFontSize(1)" style="font-weight:bold;">A+</button>
+                <button onclick="adjustFontSize(-1)" style="font-weight:bold;">A-</button>
+            </div>
+        </div>
+
         <div id="panzoom-element">
-            <img src="picture-1.png" id="main-map" alt="Bible Map">
-            <div id="marker-container"></div>
+            <img src="" id="bg-map">
+            <div id="overlay-container" style="position:absolute; top:0; left:0; pointer-events:none;">
+                <svg id="svg-layer" style="position:absolute; width:100%; height:100%;"></svg>
+                <div id="marker-layer"></div>
+            </div>
         </div>
     </div>
-
+    
+    <div id="resizer-main"></div>
+    
     <div id="side-panel">
-        <div class="resizer-v" id="resizer-v"></div>
-        <div class="resizer-h" id="resizer-h"></div>
-        <div id="panel-header">
-            <h2>聖經史地互動地圖 <span id="ver-tag" style="font-size: 0.7rem; opacity: 0.7;">V1.1.14</span></h2>
-            <select id="folder-select">
-                <option value="">-- 請選擇史地章節 --</option>
-            </select>
+        <div id="folder-nav"><select id="folder-select" onchange="loadProject(this.value)" style="width:100%; padding:8px;"><option value="">載入中...</option></select></div>
+        <div id="info-area">
+            <div id="info-header" onclick="toggleInfo()"><div>📜 詳情 <span id="info-arrow">▼</span></div><div style="display:flex; gap:10px;"><button onclick="navEvent(-1); event.stopPropagation();">◀</button><button onclick="navEvent(1); event.stopPropagation();">▶</button></div></div>
+            <div id="info-body">
+                <div id="info-time" style="color:#888;"></div>
+                <h3 id="info-title" style="color:var(--gold); margin:5px 0;"></h3>
+                <div id="info-path" style="background:#f9f9f9; padding:8px; border-radius:4px; margin:5px 0; font-weight:bold;"></div>
+                <p id="info-script"></p>
+                <div id="info-note"></div>
+            </div>
         </div>
-        <div id="event-list">
-            <div style="text-align:center; color:#999; margin-top:50px;">請選擇左上角史地章節</div>
+        <div id="resizer-inner"></div>
+        <div id="list-container"><table><tbody id="table-body"></tbody></table></div>
+    </div>
+</div>
+
+<div id="scripture-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <span id="modal-title">經文閱讀</span>
+            <span class="modal-close" onclick="closeScripture()">×</span>
         </div>
+        <iframe id="scripture-frame" src=""></iframe>
     </div>
 </div>
 
 <script>
-    let pz;
-    let eventData = [];
-    let coordData = [];
-    let fullText = "";
-    const bookMap = {
-        "創世記": "gen", "出埃及記": "ex", "利未記": "lev", "民數記": "num", "申命記": "deut",
-        "約書亞記": "josh", "士師記": "judg", "路得記": "ruth", "撒母耳記上": "1-sam", "撒母耳記下": "2-sam",
-        "列王紀上": "1-kgs", "列王紀下": "2-kgs", "歷代志上": "1-chr", "歷代志下": "2-chr", "以斯拉記": "ezra",
-        "尼希米記": "neh", "以斯帖記": "esth", "約伯記": "job", "詩篇": "ps", "箴言": "prov",
-        "傳道書": "eccl", "雅歌": "song", "以賽亞書": "isa", "耶利米書": "jer", "耶利米哀歌": "lam",
-        "以西結書": "ezek", "彈以理書": "dan", "何西阿書": "hos", "約珥書": "joel", "阿摩司書": "amos",
-        "俄巴底亞書": "obad", "約拿書": "jonah", "彌迦書": "mic", "那鴻書": "nah", "哈巴谷書": "hab",
-        "西番雅書": "zeph", "哈該書": "hag", "撒迦利亞書": "zech", "瑪拉基書": "mal",
-        "馬太福音": "matt", "馬可福音": "mark", "路加福音": "luke", "約翰福音": "john", "使徒行傳": "acts",
-        "羅馬書": "rom", "哥林多前書": "1-cor", "哥林多後書": "2-cor", "加拉太書": "gal", "以弗所書": "eph",
-        "腓立比書": "phil", "歌羅西書": "col", "帖撒羅尼迦前書": "1-thess", "帖撒羅尼迦後書": "2-thess",
-        "提摩太前書": "1-tim", "提摩太後書": "2-tim", "提多書": "tit", "腓利門書": "philem", "希伯來書": "heb",
-        "雅各書": "james", "彼得前書": "1-pet", "彼得後書": "2-pet", "約翰一書": "1-jn", "約翰二書": "2-jn",
-        "約翰三書": "3-jn", "猶大書": "jude", "啟示錄": "rev",
-        "創": "gen", "出": "ex", "利": "lev", "民": "num", "申": "deut", "書": "josh", "士": "judg", "得": "ruth",
-        "撒上": "1-sam", "撒下": "2-sam", "王上": "1-kgs", "王下": "2-kgs", "代上": "1-chr", "代下": "2-chr",
-        "拉": "ezra", "尼": "neh", "帖": "esth", "伯": "job", "詩": "ps", "箴": "prov", "傳": "eccl", "歌": "song",
-        "賽": "isa", "耶": "jer", "哀": "lam", "結": "ezek", "但": "dan", "何": "hos", "珥": "joel", "摩": "amos",
-        "俄": "obad", "拿": "jonah", "彌": "mic", "鴻": "nah", "哈": "hab", "番": "zeph", "該": "hag", "亞": "zech", "瑪": "mal",
-        "太": "matt", "可": "mark", "路": "luke", "翰": "john", "徒": "acts", "羅": "rom", "林前": "1-cor", "林後": "2-cor",
-        "加": "gal", "弗": "eph", "腓": "phil", "西": "col", "帖前": "1-thess", "帖後": "2-thess", "提前": "1-tim", "提後": "2-tim",
-        "多": "tit", "門": "philem", "來": "heb", "雅": "james", "彼前": "1-pet", "彼後": "2-pet", "約一": "1-jn", "約二": "2-jn", "約三": "3-jn", "猶": "jude", "啟": "rev",
-        "JST Genesis": "jst-gen", "約譯創世記": "jst-gen", "約譯馬太": "jst-matt", "JST Matthew": "jst-matt"
+    const SCRIPTURE_PHYSICAL_MAP = { 
+        "阿爾瑪書": "bofm/alma", "阿": "bofm/alma",
+        "希伯來書": "nt/heb", "來": "nt/heb",
+        "教義和聖約": "dc-testament/dc", "教約": "dc-testament/dc",
+        "創世記": "ot/gen", "創": "ot/gen", "出": "ot/ex", "利": "ot/lev", "民": "ot/num", "申": "ot/deut", "書": "ot/josh", "士": "ot/judg", "得": "ot/ruth", "撒上": "ot/1-sam", "撒下": "ot/2-sam", "王上": "ot/1-kgs", "王下": "ot/2-kgs", "代上": "ot/1-chr", "代下": "ot/2-chr", "拉": "ot/ezra", "尼": "ot/neh", "斯": "ot/esth", "伯": "ot/job", "詩": "ot/ps", "箴": "ot/prov", "傳": "ot/eccl", "歌": "ot/ss", "賽": "ot/isa", "耶": "ot/jer", "哀": "ot/lam", "結": "ot/ezek", "但": "ot/dan", "單": "ot/dan", "何": "ot/hos", "珥": "ot/joel", "摩": "ot/amos", "俄": "ot/obad", "拿": "ot/jonah", "彌": "ot/micah", "鴻": "ot/nahum", "哈": "ot/hab", "番": "ot/zeph", "該": "ot/hag", "亞": "ot/zech", "瑪": "ot/mal",
+        "太": "nt/matt", "可": "nt/mark", "路": "nt/luke", "約": "nt/john", "徒": "nt/acts", "羅": "nt/rom", "林前": "nt/1-cor", "林後": "nt/2-cor", "加": "nt/gal", "弗": "nt/eph", "腓": "nt/phil", "西": "nt/col", "帖前": "nt/1-thes", "帖後": "nt/2-thes", "提前": "nt/1-tim", "提後": "nt/2-tim", "多": "nt/titus", "門": "nt/philem", "雅": "nt/james", "彼前": "nt/1-pet", "彼後": "nt/2-pet", "約一": "nt/1-jn", "約二": "nt/2-jn", "約三": "nt/3-jn", "猶": "nt/jude", "啟": "nt/rev",
+        "腓一": "bofm/1-ne", "腓二": "bofm/2-ne", "各": "bofm/jacob", "愛": "bofm/enos", "吉": "bofm/jarom", "奧": "bofm/omni", "摩言": "bofm/w-of-m", "摩賽": "bofm/mosiah", "曼": "bofm/hel", "腓三": "bofm/3-ne", "腓四": "bofm/4-ne", "摩爾門": "bofm/morm", "以": "bofm/ether", "乃": "bofm/moro",
+        "罕": "pgp/abr", "摩西": "pgp/moses"
     };
 
-    function parseCSV(text) {
-        const rows = []; let current = []; let inQuoted = false; let token = "";
-        for (let i = 0; i < text.length; i++) {
-            const char = text[i]; const next = text[i+1];
-            if (inQuoted) {
-                if (char === '"' && next === '"') { token += '"'; i++; }
-                else if (char === '"') inQuoted = false;
-                else token += char;
-            } else {
-                if (char === '"') inQuoted = true;
-                else if (char === ',' || char === '\n' || char === '\r') {
-                    current.push(token.trim()); token = "";
-                    if (char !== ',') { if (current.length > 0) rows.push(current); current = []; if (char === '\r' && next === '\n') i++; }
-                } else token += char;
+    function openScripture(bookKey, chap, sec, endSec) {
+        const path = SCRIPTURE_PHYSICAL_MAP[bookKey];
+        let primaryUrl = "";
+        if (path) {
+            let idParam = sec ? `p${sec}` : "";
+            if (sec && endSec) idParam = `p${sec}-p${endSec}`;
+            primaryUrl = `https://www.churchofjesuschrist.org/study/scriptures/${path}/${chap}?lang=zho`;
+            if (sec) {
+                const anchor = parseInt(sec) > 1 ? parseInt(sec) - 1 : 1;
+                primaryUrl += `&id=${idParam}#p${anchor}`;
             }
         }
-        if (token || current.length > 0) { current.push(token.trim()); rows.push(current); }
-        return rows;
-    }
-
-    function formatVerse(v) {
-        if (!v) return "";
-        return v.replace(/(JST\s+[\w]+|[\u4e00-\u9fa5]{1,4})\s*(\d+):(\d+)(-\d+)?/g, (match, book, chap, start, end) => {
-            const b = book.trim();
-            const bookCode = bookMap[b] || "";
-            let cat = "ot";
-            if (b.match(/馬太|太|馬可|路加|約翰/)) cat = "nt";
-            if (b.startsWith("JST") || b.startsWith("約譯")) cat = "jst";
-            
-            const url = `https://www.churchofjesuschrist.org/study/scriptures/${cat}/${bookCode}/${chap}?lang=zho&id=p${start}${end || ""}`;
-            return `<a href="${url}" target="_blank" class="verse-link">${match}</a>`;
-        });
-    }
-
-    async function loadFolder(folder) {
-        if (!folder) return;
-        localStorage.setItem('lastBibleFolder', folder);
-        const [cRes, dRes] = await Promise.all([ fetch(`coords-${folder}.csv`), fetch(`data-${folder}.csv`) ]);
-        const cText = await cRes.text(); const dText = await dRes.text();
-        fullText = dText;
-        const cRows = parseCSV(cText).slice(1);
-        coordData = cRows.map(r => ({ n: r[1], x: parseFloat(r[5]), y: parseFloat(r[6]), s: parseInt(r[7]) || 0 }));
-        const dRows = parseCSV(dText).slice(1);
-        eventData = dRows.map(r => ({ id: r[0], time: r[1], content: r[2], geo: r[3], verse: r[4], note: r[5], _searchStr: (r[2]+r[3]+r[5]) }));
-        
-        updateMarkers(); renderEvents(); syncOverlay();
-    }
-
-    function updateMarkers() {
-        const container = document.getElementById('marker-container');
-        container.innerHTML = "";
-        coordData.forEach(data => {
-            if (!data.n) return;
-            const m = document.createElement('div'); m.className = 'marker';
-            m.style.left = data.x + "%"; m.style.top = data.y + "%";
-            
-            const safeName = data.n.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            m.dataset.freq = (fullText.match(new RegExp(safeName, 'g')) || []).length;
-            m.dataset.size = data.s || 0;
-            
-            const label = document.createElement('div'); label.className = 'marker-label';
-            label.innerText = data.n; m.appendChild(label);
-            m.onclick = () => filterEventsByGeo(data.n);
-            container.appendChild(m);
-        });
-        applyMarkerStyles();
-        setTimeout(refreshCollision, 100);
-    }
-
-    function applyMarkerStyles() {
-        const scale = pz.getScale();
-        document.querySelectorAll('.marker').forEach(m => {
-            const freq = parseInt(m.dataset.freq) || 1;
-            const sizeBase = parseInt(m.dataset.size) || 0;
-            const base = (window.innerWidth < 800) ? 8 : 12;
-            const finalSize = (base + Math.sqrt(freq) * 2 + sizeBase) / scale;
-            m.style.width = finalSize + "px"; m.style.height = finalSize + "px";
-            const lb = m.querySelector('.marker-label');
-            if (lb) {
-                lb.style.fontSize = (12/scale) + "px"; lb.style.left = (finalSize*0.8) + "px";
-                lb.style.padding = `${2/scale}px ${6/scale}px`;
-            }
-        });
-    }
-
-    function refreshCollision() {
-        const scale = pz.getScale();
-        const markers = Array.from(document.querySelectorAll('.marker'));
-        markers.sort((a,b) => (parseInt(b.dataset.freq)||0) - (parseInt(a.dataset.freq)||0));
-        const usedRects = [];
-        markers.forEach(m => {
-            const lb = m.querySelector('.marker-label'); if (!lb) return;
-            const rect = lb.getBoundingClientRect();
-            let overlap = usedRects.some(r => !(rect.right < r.left || rect.left > r.right || rect.bottom < r.top || rect.top > r.bottom));
-            if (overlap && parseInt(m.dataset.freq) < 3) { lb.style.opacity = 0; }
-            else { lb.style.opacity = 1; usedRects.push(rect); }
-        });
-    }
-
-    function renderEvents(filterText = "") {
-        const list = document.getElementById('event-list');
-        list.innerHTML = "";
-        const filtered = filterText ? eventData.filter(e => e.geo.includes(filterText)) : eventData;
-        filtered.forEach(e => {
-            const card = document.createElement('div'); card.className = 'event-card';
-            card.innerHTML = `
-                <div class="event-time">${e.time}</div>
-                <div class="event-content">${e.content}</div>
-                <div class="event-meta">
-                    <span class="meta-tag">📍 ${e.geo}</span>
-                    <span>📖 ${formatVerse(e.verse)}</span>
+        const backupUrl = `https://bible.fhl.net/new/read.php?chineses=${encodeURIComponent(bookKey)}&chap=${chap}`;
+        const modal = document.getElementById('scripture-modal');
+        const title = document.getElementById('modal-title');
+        title.innerHTML = `
+            <div style="display:flex; align-items:center; justify-content:space-between; width:100%; gap:10px;">
+                <div style="font-weight:bold; font-size:16px;">${bookKey} 第 ${chap} 章</div>
+                <div style="display:flex; gap:5px; align-items:center;">
+                    <button id="btn-primary" onclick="switchSrc('${primaryUrl}', true)" 
+                            style="font-size:11px; padding:3px 8px; cursor:pointer; background:${primaryUrl?'#c5a059':'#666'}; border:none; color:white; border-radius:4px;">主要</button>
+                    <button id="btn-backup" onclick="switchSrc('${backupUrl}', false)" 
+                            style="font-size:11px; padding:3px 8px; cursor:pointer; background:#2980b9; border:none; color:white; border-radius:4px;">備用</button>
+                    <button onclick="window.open(document.getElementById('scripture-frame').src, '_blank')" 
+                            style="font-size:11px; padding:3px 8px; background:rgba(255,255,255,0.2); border:1px solid white; color:white; border-radius:4px; cursor:pointer;">🌐</button>
                 </div>
-                ${e.note ? `<div style="margin-top:8px; font-size:12px; color:#666; border-top:1px dashed #eee; padding-top:4px;">註: ${e.note}</div>` : ""}
-            `;
-            card.onclick = () => {
-                document.querySelectorAll('.event-card').forEach(c => c.classList.remove('active'));
-                card.classList.add('active');
-                focusGeo(e.geo);
-            };
-            list.appendChild(card);
-        });
+            </div>
+        `;
+        const defaultUrl = primaryUrl || backupUrl;
+        switchSrc(defaultUrl, !!primaryUrl);
+        modal.style.display = 'block';
     }
 
-    function focusGeo(geoStr) {
-        const target = coordData.find(c => geoStr.includes(c.n));
-        if (target) {
-            const container = document.getElementById('map-section');
-            const cw = container.clientWidth; const ch = container.clientHeight;
-            const tx = (target.x / 100) * 1000; const ty = (target.y / 100) * 1414;
-            pz.zoom(2.5, { animate: true });
-            setTimeout(() => pz.pan(cw/2 - tx*2.5, ch/2 - ty*2.5, { animate: true }), 100);
+    function switchSrc(url, isPrimary) {
+        if (!url || url === "null") return;
+        const frame = document.getElementById('scripture-frame');
+        const btnP = document.getElementById('btn-primary');
+        const btnB = document.getElementById('btn-backup');
+        frame.src = url;
+        if(btnP && btnB) {
+            btnP.style.opacity = isPrimary ? "1" : "0.4";
+            btnB.style.opacity = isPrimary ? "0.4" : "1";
         }
     }
 
-    function filterEventsByGeo(name) { renderEvents(name); }
+    function closeScripture() { document.getElementById('scripture-modal').style.display = 'none'; document.getElementById('scripture-frame').src = ''; }
 
-    let lastLandscapeWidth = "400px";
-    let lastPortraitHeight = "40%";
-    const resizerV = document.getElementById('resizer-v');
-    const resizerH = document.getElementById('resizer-h');
-    const sidePanel = document.getElementById('side-panel');
+    let pz, eventData = [], filteredData = [], allCoords = [], currentFolder = '', currentMapIdx = -1, currentEventIdx = -1, baseMarkerFontSize = 13, fullText = '';
+    let searchHistory = JSON.parse(localStorage.getItem('bibleSearchHistory') || '[]');
+    let lastPortraitHeight = "33.33dvh", lastLandscapeWidth = "33.33%";    
 
-    resizerV.addEventListener('mousedown', e => {
-        document.addEventListener('mousemove', resizeV);
-        document.addEventListener('mouseup', () => document.removeEventListener('mousemove', resizeV));
-    });
-    function resizeV(e) {
-        let w = window.innerWidth - e.clientX;
-        if (w > 200 && w < window.innerWidth * 0.8) {
-            lastLandscapeWidth = w + "px"; sidePanel.style.width = lastLandscapeWidth;
-            sidePanel.style.flex = "none"; syncOverlay(); updateMinScale(); refreshCollision();
+    function toggleSearch() { const input = document.getElementById('search-input'); const isOpening = !input.classList.contains('open'); input.classList.toggle('open'); if (isOpening) { input.focus(); } else { hideHistory(); } }
+    function handleSearch(keyword) { const input = document.getElementById('search-input'); const term = (keyword !== undefined ? keyword : input.value).trim().toLowerCase(); const clearBtn = document.getElementById('search-clear'); clearBtn.style.display = term ? 'block' : 'none'; if (!term) { filteredData = [...eventData]; } else { const safeTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); const regex = new RegExp(safeTerm, 'gi'); filteredData = eventData.map(item => { const match = item._searchStr.match(regex); return { ...item, score: match ? match.length : 0 }; }).filter(item => item.score > 0).sort((a, b) => parseInt(a.id) - parseInt(b.id)); } renderTable(filteredData); if (term && keyword === undefined) saveHistory(term); if (term && filteredData.length > 0) { selectEvent(0); document.getElementById('list-container').scrollTop = 0; } }
+    function clearSearch() { const lastId = currentEventIdx !== -1 ? filteredData[currentEventIdx].id : null; const input = document.getElementById('search-input'); input.value = ''; input.classList.remove('open'); document.getElementById('search-clear').style.display = 'none'; hideHistory(); handleSearch(""); if (lastId) { const newIdx = filteredData.findIndex(d => d.id === lastId); if (newIdx !== -1) { selectEvent(newIdx); const r = document.getElementById('table-body').rows[newIdx]; if(r) r.scrollIntoView({block:'center'}); } } }
+    function saveHistory(term) { if (!term.trim()) return; searchHistory = [term, ...searchHistory.filter(h => h !== term)].slice(0, 10); localStorage.setItem('bibleSearchHistory', JSON.stringify(searchHistory)); renderHistory(); }
+    function renderHistory() { const panel = document.getElementById('search-history'); panel.innerHTML = searchHistory.map(h => `<div class="history-item" onclick="useHistory('${h}')"><span>${h}</span><span style="color:#ccc" onclick="deleteHistory(event, '${h}')">×</span></div>`).join(''); }
+    function useHistory(h) { document.getElementById('search-input').value = h; handleSearch(h); hideHistory(); }
+    function deleteHistory(e, h) { e.stopPropagation(); searchHistory = searchHistory.filter(item => item !== h); localStorage.setItem('bibleSearchHistory', JSON.stringify(searchHistory)); renderHistory(); }
+    function showHistory() { if(searchHistory.length) document.getElementById('search-history').style.display = 'block'; renderHistory(); }
+    function hideHistory() { document.getElementById('search-history').style.display = 'none'; }
+    function selectEvent(idxInFiltered) { if (idxInFiltered < 0 || idxInFiltered >= filteredData.length) return; currentEventIdx = idxInFiltered; const item = filteredData[idxInFiltered]; Array.from(document.getElementById('table-body').rows).forEach((r, i) => r.className = i === idxInFiltered ? 'active-row' : ''); updateMapAndInfo(item); }
+    function navEvent(step) { const nextIdx = currentEventIdx + step; if (nextIdx >= 0 && nextIdx < filteredData.length) { selectEvent(nextIdx); const r = document.getElementById('table-body').rows[nextIdx]; if(r) r.scrollIntoView({behavior:'smooth', block:'center'}); } }
+
+    async function updateMapAndInfo(item) {
+        let targetMapIdx = 1; const testNames = item.loc.split(/[+→]/).map(p => p.replace(/\(.*?\)/g, '').trim());
+        for (let x = 15; x >= 1; x--) { const db = allCoords.filter(c => c.mapIdx === x); if (db.length && testNames.every(n => findBestMatch(n, db))) { targetMapIdx = x; break; } }
+        if (currentMapIdx !== targetMapIdx) {
+            currentMapIdx = targetMapIdx; const img = document.getElementById('bg-map'); img.src = `${currentFolder}/picture-${targetMapIdx}.png`;
+            await new Promise(res => img.onload = () => { syncOverlay(); updateMinScale(); res(); });
         }
-    }
-    resizerH.addEventListener('mousedown', e => {
-        document.addEventListener('mousemove', resizeH);
-        document.addEventListener('mouseup', () => document.removeEventListener('mousemove', resizeH));
-    });
-    function resizeH(e) {
-        let h = window.innerHeight - e.clientY;
-        if (h > 150 && h < window.innerHeight * 0.8) {
-            lastPortraitHeight = h + "px"; sidePanel.style.height = lastPortraitHeight;
-            sidePanel.style.flex = `0 0 ${lastPortraitHeight}`; syncOverlay(); updateMinScale(); refreshCollision();
-        }
+        const mapData = allCoords.filter(c => c.mapIdx === targetMapIdx); renderVisuals(mapData, parseLocationLogic(item.loc, mapData)); updateInfoPanel(item);
     }
 
-    function syncOverlay() { if(pz) pz.setOptions({ contain: 'outside' }); }
-    function updateMinScale() {
-        const container = document.getElementById('map-section');
-        const minScale = Math.max(container.clientWidth / 1000, container.clientHeight / 1414);
-        pz.setOptions({ minScale });
-    }
-
-    window.onload = async () => {
-        const el = document.getElementById('panzoom-element'); pz = Panzoom(el, { maxScale: 8, contain: 'outside', animate: true });
-        window.addEventListener('resize', () => { 
-            const side = document.getElementById('side-panel');
-            if (window.innerWidth < window.innerHeight) { side.style.width = ""; side.style.height = lastPortraitHeight; side.style.flex = `0 0 ${lastPortraitHeight}`; }
-            else { side.style.height = ""; side.style.width = lastLandscapeWidth; side.style.flex = "none"; }
-            syncOverlay(); updateMinScale(); refreshCollision(); 
-        });
-        el.addEventListener('panzoomchange', () => { applyMarkerStyles(); refreshCollision(); });
-        document.getElementById('map-section').addEventListener('wheel', pz.zoomWithWheel);
-        
-        const res = await fetch(`folder.csv?t=${Date.now()}`); const folders = parseCSV(await res.text()).slice(1);
-        const select = document.getElementById('folder-select'); select.innerHTML = '<option value="">-- 請選擇史地章節 --</option>';
-        folders.forEach(f => { if(f[0]) { const opt = document.createElement('option'); opt.value = f[0]; opt.innerText = f[1] || f[0]; select.appendChild(opt); } });
-        
-        const last = localStorage.getItem('lastBibleFolder');
-        if (last) { select.value = last; loadFolder(last); }
-        select.onchange = (e) => loadFolder(e.target.value);
-        updateMinScale();
-    };
-</script>
-
-</body>
-</html>
+    function renderVisuals(db, logic) {
+        const ml = document.getElementById('marker-layer'), sl = document.getElementById('svg-layer'); sl.innerHTML = '';
+        logic.paths.forEach(path => { for (let i = 0; i < path.length - 1; i++) { const line = document.createElementNS('http://www.
